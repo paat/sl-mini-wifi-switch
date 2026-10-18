@@ -69,6 +69,7 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Keep setup evidence after profile-save failure so retry can send once (T-001)
 - [x] Consume quick-launch actions so rotation keeps guide and error screens (T-002)
 - [x] Preserve the reboot deadline through probe timeout and lifecycle release (T-003, T-005)
+- [x] Keep the typed form on return and request setup Wi-Fi only after a Reconnect tap (T-004)
 
 ## M5: Release
 

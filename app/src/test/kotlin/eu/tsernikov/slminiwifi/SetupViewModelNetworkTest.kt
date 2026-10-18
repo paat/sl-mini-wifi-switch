@@ -23,6 +23,8 @@ import eu.tsernikov.slminiwifi.state.MiniDetails
 import eu.tsernikov.slminiwifi.state.MiniState
 import java.io.IOException
 import java.net.InetAddress
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -64,6 +66,92 @@ class SetupViewModelNetworkTest {
     }
 
     @After fun tearDown() = store.clear()
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun resumeKeepsTypedFormAndRequestsWifiOnlyAfterReconnectTap() = runTest {
+        kotlinx.coroutines.Dispatchers.setMain(kotlinx.coroutines.test.StandardTestDispatcher(testScheduler))
+        shadowOf(application).grantPermissions(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+        val credentials = Profile("TypedName", "TypedPassword77")
+        try {
+            for (screen in listOf(SetupViewModel.Screen.WifiOn, SetupViewModel.Screen.WifiOnConfirm,
+                SetupViewModel.Screen.WifiOff)) {
+                val original = addNetwork(1, NetworkCapabilities.TRANSPORT_WIFI, "STARLINK")
+                model.screen = screen
+                model.profile = credentials
+                model.ownPassword = true
+                model.confirmedConnection = StarlinkConnection(original, "192.168.1.1")
+                model.confirmationIsWifi = true
+                model.snapshot = eu.tsernikov.slminiwifi.state.MiniSnapshot(MiniState.SetupPending)
+                model.transportFactory = { _, _ -> ReadOnlyTransport() }
+                model.stop()
+                connectivity.clearAllNetworks()
+                model.start()
+                testScheduler.runCurrent()
+                assertEquals(screen, model.screen)
+                assertSame(credentials, model.profile)
+                assertTrue(model.ownPassword)
+                assertFalse(model.canConfirm)
+                assertTrue(connectivity.networkCallbacks.isEmpty())
+
+                model.requestAccess(SetupViewModel.PermissionAction.Connect)
+                testScheduler.runCurrent()
+                val declined = connectivity.networkCallbacks.single()
+                // onStart during Android's dialog must not cancel or repeat the requested connection.
+                model.start()
+                testScheduler.runCurrent()
+                assertSame(declined, connectivity.networkCallbacks.single())
+                manager.unregisterNetworkCallback(declined)
+                declined.onUnavailable()
+                testScheduler.runCurrent()
+                assertEquals(screen, model.screen)
+                assertSame(credentials, model.profile)
+                assertFalse(model.canConfirm)
+                assertFalse(model.checking)
+                assertFalse(model.requestingWifi)
+                assertTrue(connectivity.networkCallbacks.isEmpty())
+
+                model.requestAccess(SetupViewModel.PermissionAction.Connect)
+                testScheduler.runCurrent()
+                val accepted = connectivity.networkCallbacks.single()
+                val replacement = addNetwork(2, NetworkCapabilities.TRANSPORT_WIFI, "STARLINK")
+                val properties = manager.getLinkProperties(replacement)!!.apply {
+                    dhcpServerAddress = InetAddress.getByName("192.168.1.1") as java.net.Inet4Address
+                }
+                connectivity.setLinkProperties(replacement, properties)
+                accepted.onAvailable(replacement)
+                accepted.onLinkPropertiesChanged(replacement, properties)
+                testScheduler.runCurrent()
+                assertEquals(screen, model.screen)
+                assertSame(credentials, model.profile)
+                assertTrue(model.canConfirm)
+                assertEquals(replacement, model.confirmedConnection?.network)
+                org.junit.Assert.assertNull(model.writing)
+                model.stop()
+            }
+        } finally { kotlinx.coroutines.Dispatchers.resetMain() }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun failedResumeProbeKeepsTypedFormAndConfirmationDisabled() = runTest {
+        kotlinx.coroutines.Dispatchers.setMain(kotlinx.coroutines.test.StandardTestDispatcher(testScheduler))
+        try {
+            addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
+            for (screen in listOf(SetupViewModel.Screen.WifiOn, SetupViewModel.Screen.WifiOnConfirm)) {
+                model.screen = screen
+                val credentials = Profile("TypedName", "TypedPassword77")
+                model.profile = credentials
+                model.transportFactory = { _, _ -> throw IllegalStateException("Probe unavailable") }
+                model.start()
+                testScheduler.runCurrent()
+                assertEquals(screen, model.screen)
+                assertSame(credentials, model.profile)
+                assertFalse(model.canConfirm)
+                assertFalse(model.checking)
+                assertTrue(connectivity.networkCallbacks.isEmpty())
+                model.stop()
+            }
+        } finally { kotlinx.coroutines.Dispatchers.resetMain() }
+    }
 
     @Test fun failedEthernetProbesFallThroughToAvailableStarlinkWifi() = runTest {
         val ethernet = addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)

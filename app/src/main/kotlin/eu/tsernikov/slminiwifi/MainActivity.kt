@@ -63,6 +63,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
             with(model) {
+                val reconnectSetup: (() -> Unit)? = if (!canConfirm && !checking && !requestingWifi) {
+                    { requestAccess(PermissionAction.Connect) }
+                } else null
                 MiniTheme {
                     BackHandler(enabled = screen != Screen.Home) {
                         if (screen != Screen.WifiOffProgress && screen != Screen.WifiOnProgress) {
@@ -109,8 +112,9 @@ class MainActivity : ComponentActivity() {
                             onUseSaved = { savedProfile?.let { profile = it; ownPassword = true } },
                             onContinue = { if (WifiRules.isValid(profile)) screen = Screen.WifiOnConfirm },
                             onBack = ::returnHome, message = profileError, onHelp = ::openHelp,
+                            onReconnect = reconnectSetup, canConfirm = canConfirm,
                         )
-                        Screen.WifiOnConfirm -> WifiOnConfirmScreen(profile.name, ::confirmWifiOn, onCancel = { screen = Screen.WifiOn }, canConfirm = canConfirm)
+                        Screen.WifiOnConfirm -> WifiOnConfirmScreen(profile.name, ::confirmWifiOn, onCancel = { screen = Screen.WifiOn }, canConfirm = canConfirm, onReconnect = reconnectSetup)
                         Screen.WifiOnProgress -> WifiOnProgressScreen(onReconnect = if (reconnectAvailable) ::reconnectForVerification else null)
                         Screen.WifiOnResult -> WifiOnResultScreen(profile,
                             onConnect = { screen = Screen.WifiOnConnect },
@@ -121,7 +125,7 @@ class MainActivity : ComponentActivity() {
                                 screen = Screen.WifiOnResult
                                 joinMessage = autoConnect.connect(profile.name, profile.password)?.let(::joinMessage)
                             }, onBack = { screen = Screen.WifiOnResult })
-                        Screen.WifiOff -> WifiOffConfirmScreen(confirmationIsWifi, ::confirmWifiOff, ::returnHome, canConfirm = canConfirm)
+                        Screen.WifiOff -> WifiOffConfirmScreen(confirmationIsWifi, ::confirmWifiOff, ::returnHome, canConfirm = canConfirm, onReconnect = reconnectSetup)
                         Screen.WifiOffProgress -> WifiOffProgressScreen()
                         Screen.WifiOffResult -> WifiOffResultScreen(likelySuccess,
                             onDetails = if (hasDetails) ({ detailsReturn = Screen.WifiOffResult; screen = Screen.Details }) else null,

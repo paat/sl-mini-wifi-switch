@@ -39,6 +39,7 @@ fun WifiOffConfirmScreen(
     onCancel: () -> Unit,
     animateGuides: Boolean = true,
     canConfirm: Boolean = true,
+    onReconnect: (() -> Unit)? = null,
 ) {
     Screen {
         Heading(stringResource(R.string.wifi_off_confirm_title))
@@ -46,12 +47,20 @@ fun WifiOffConfirmScreen(
         RouterIllustration(animateGuides)
         Text(stringResource(R.string.wifi_off_undo))
         if (isWifi) Text(stringResource(R.string.wifi_off_disconnect_warning))
-        if (!canConfirm) {
-            WaitingProgress(animateGuides)
-            Text(stringResource(R.string.confirm_checking))
-        }
+        SetupConnectionStatus(canConfirm, onReconnect, animateGuides)
         PrimaryButton(R.string.wifi_off_confirm, onConfirm, canConfirm)
         SecondaryButton(R.string.cancel, onCancel)
+    }
+}
+
+/** The same connection check and explicit recovery action keep each unsent choice in place. */
+@Composable
+internal fun SetupConnectionStatus(canConfirm: Boolean, onReconnect: (() -> Unit)?, animateGuides: Boolean = true) {
+    if (onReconnect != null) {
+        PrimaryButton(R.string.setup_reconnect, onReconnect)
+    } else if (!canConfirm) {
+        WaitingProgress(animateGuides)
+        Text(stringResource(R.string.confirm_checking))
     }
 }
 

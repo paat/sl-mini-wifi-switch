@@ -191,7 +191,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                 permissionDenied = false
                 message = null
             }
-            if (screen == Screen.WifiOff || screen == Screen.WifiOnConfirm || screen == Screen.WifiOn) {
+            if (!requestingWifi && (screen == Screen.WifiOff || screen == Screen.WifiOnConfirm || screen == Screen.WifiOn)) {
                 reacquireConfirmation()
             } else startPolling(showProgress = true)
         } else message = R.string.no_network_permission
@@ -527,7 +527,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                 message = R.string.connection_failed
             } finally {
                 requestingWifi = false
-                if (foreground) startPolling(showProgress = true)
+                if (foreground) start()
             }
         }
     }
@@ -583,7 +583,6 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         checking = true
         connecting = scope.launch {
             try {
-                if (confirmationIsWifi && networks.findWifi("STARLINK") == null) networks.requestStarlink()
                 val (connection, result) = detectAvailable()
                 snapshot = result
                 rememberDetails(result)
@@ -591,14 +590,10 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                     confirmedConnection = connection
                     confirmedInterface = networks.interfaceName(connection)
                     confirmationIsWifi = !networks.isEthernet(connection)
-                } else {
-                    screen = Screen.Home
-                    message = if (result.state == MiniState.NotFound) R.string.connection_failed else null
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
-                screen = Screen.Home
                 message = R.string.connection_failed
             } finally { checking = false }
         }

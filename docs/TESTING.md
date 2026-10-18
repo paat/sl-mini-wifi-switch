@@ -220,7 +220,7 @@ All controller/network tests use fake transports or fixtures; they send nothing 
 | #17.3 | `SetupViewModelLifecycleTest.reconnectAfterBackgroundedErrorAndDeclinedDialogOnlyRequestsWifiAgain`; `WifiOnFlowTest.explicitReconnectVerificationCanRecoverAfterFailureWithoutSendingAnyWrite` |
 | #17.4 | `StarlinkNetworksTest.savedNameRequiresStarlinkIdentityAtTheDiscoveredGateway`; `savedNameWithoutDhcpGatewayDoesNotProbeFixedAddresses` |
 | #17.5 | `RobustnessScreensTest.unicodeNameLimitHasPlainRecoveryAndCannotContinue` |
-| #17.6 | `SetupViewModelLifecycleTest.profileEncryptionAndPersistenceRunOffTheCallingThread`; `MainActivityRecoveryTest.encryptionFailureStopsBeforeAnyNetworkWrite` |
+| #17.6 | `SetupViewModelLifecycleTest.profileEncryptionAndPersistenceRunOffTheCallingThread`; `MainActivityRecoveryTest.saveFailureThenRetryAndConfirmSendsExactlyOneWrite` |
 
 Validation on 2026-10-18:
 
@@ -244,7 +244,7 @@ All network behavior below uses fake transports; no real Mini writes were perfor
 | T-002 | `FieldGuideScreenshotsTest.guideStepChangesStartAtTopAtLargeFontIncludingBackAndAlternatePaths` scrolls each step to the bottom and checks the next step starts at zero, including Back and cable/Wi-Fi alternatives at 200% text. |
 | T-003 | `MainActivityRecoveryTest.quickLaunchRoutesOnlyIdleScreensHomeAndPreservesSetupAndResults` covers both results, phone-save guidance, editing, both confirmations and both progress screens. |
 | T-004 | `ResetPressAnimationTest.pressHoldsThreeSecondsThenRemainsReleasedThroughCycleEnd` samples the entire three-second hold and the 4000–4500 ms released pause. |
-| T-005 | `FieldGuideScreenshotsTest.homeRebootingLight` / `homeRebootingDark` assert no Start here action and visible waiting/recovery text; `SetupViewModelLifecycleTest.homeKeepsPollingThroughRebootUntilMiniAnswersAgain` verifies the same polling job reads through restart and recovery. |
+| T-005 | `FieldGuideScreenshotsTest.homeRebootingLight` / `homeRebootingDark` assert no Start here action and visible waiting/recovery text; `SetupViewModelLifecycleTest.homeKeepsRebootDeadlineThroughStopStartUntilMiniAnswersAgain` verifies the same polling job reads through restart and recovery. |
 | T-006 | `FieldGuideScreenshotsTest.reducedMotionShowsOffAndDoesNotClaimHalfFinished` asserts static waiting text and no progress-range semantics. Affected light/dark and 200%-text guide/wait screenshots show the clock and text. |
 | T-007 (part of T-003) | `MainActivityRecoveryTest.quickLaunchKeepsPermissionStateEvenAfterDialogRequestIsConsumed`; `SetupViewModelLifecycleTest.quickLaunchDuringSecurePermissionPromptStillSendsExactlyOnceAfterGrant` exercises the permission request, quick launch, grant and one fake write, with no resend. |
 | T-008 | `MainActivityRecoveryTest.coldQuickLaunchAppliesIdleRuleAfterSavedStateRestoration` and `coldQuickLaunchKeepsRestoredSavedCredentials` exercise actual Activity creation with the setup action and saved state. |
@@ -259,3 +259,49 @@ completed successfully. App: **322 tests in 22 suites**; protocol: **52 tests in
 5 suites**; total: **374 tests in 27 suites**, with **0 failures, 0 errors and
 0 skipped**. Android lint: **20 warnings, 0 errors**. Human hardware and physical
 animation checks remain the existing M4 procedures above.
+
+
+## PR #18 tribunal round 2 regression evidence
+
+All network tests use fake transports and Android network callbacks. No hardware
+writes were performed.
+
+| Finding | Regression evidence |
+|---|---|
+| T-001 | `MainActivityRecoveryTest.saveFailureThenRetryAndConfirmSendsExactlyOneWrite`: storage failure sends nothing, keeps credentials and setup evidence, then review/confirm (including a repeated tap) sends exactly once. |
+| T-002 | `SetupViewModelLifecycleTest.consumedQuickLaunchKeepsGuideAndErrorOnRotation`: initial and new quick-launch intents are consumed; subsequent rotation keeps FieldGuide's step and WifiOffError. Existing cold-launch restoration tests still pass. |
+| T-003, T-005 | `MiniStateDetectorTest.probeTimeoutAndReleasePreserveTheOriginalRestartDeadline`: timeout and release retain the original window until its exact expiry. `SetupViewModelLifecycleTest.homeKeepsRebootDeadlineThroughStopStartUntilMiniAnswersAgain`: stop/start preserves both recent reachability and an active wait, then recovery succeeds. `MiniStateDetectorTest.intentionalNetworkReleaseClearsRestartHistory` retains #11.3 behavior. |
+| T-004 | `SetupViewModelNetworkTest.resumeKeepsTypedFormAndRequestsWifiOnlyAfterReconnectTap`: editing and both confirmations survive stop/start, no automatic request, declined and accepted explicit reconnect, unchanged credentials, fresh read before confirmation and no writes. `failedResumeProbeKeepsTypedFormAndConfirmationDisabled` covers failed reads. `SetupReconnectScreensTest` covers the tap-only button, disabled writes, retained password and light/dark/200% text. |
+
+Only the 10 new disconnected editing/confirmation captures from
+`SetupReconnectScreensTest` were recorded, in `docs/screenshots/m3/setup_reconnect_*`.
+Existing screenshots were not re-recorded. Waiting/reconnect presentation is shared
+by editing and both confirmation screens.
+
+Guard audit against `07aa574`: **2 added, 2 removed, net 0** guard sites. Added:
+active-reboot check on intentional history release and the UI's reconnect-availability
+check. Removed: automatic request on missing STARLINK and the NotFound-to-Home
+fallback message check. The existing resume condition now excludes a pending
+user-requested connection. Sharing connection presentation replaces two duplicated
+waiting checks with one waiting and one reconnect rendering check (net 0). As a
+cross-check, all source `if (...)` sites in the five changed Kotlin production files
+remain **109 before / 109 after**; tests are excluded.
+
+Human follow-up (not performed): use the existing M2/M3 robustness procedures above.
+During M3 steps 2–3, type a name/password, background and return with setup Wi-Fi gone.
+The same form must remain with Reconnect to the Mini and no unsolicited Connect
+dialog. Tap Reconnect, decline, retry and accept; credentials must remain and no
+write occurs until the separate confirmation tap. Repeat on Wi-Fi-off confirmation.
+Open from the tile/shortcut, visit the guide or an error, then rotate: keep that screen.
+During the existing restart wait, background/return must not restart the deadline.
+
+Validation: `ANDROID_HOME=/home/dev/android-sdk ./gradlew --no-daemon build test`
+completed successfully in 36 seconds: **336 app tests in 23 suites**, **52 protocol
+tests in 5 suites**, **388 total tests in 28 suites**, **0 failures, 0 errors,
+0 skipped tests**. Protocol test outputs were up-to-date (protocol is unchanged).
+Android lint: **20 warnings, 0 errors**. The earlier targeted test compile failed
+because the new test lacked coroutine extension imports; those imports were added
+before the passing targeted and full runs.
+Final affected-image verification: `:app:verifyRoborazziDebug --tests
+'*SetupReconnectScreensTest'` passed all **10 tests in 1 suite** against the recorded
+images after the shared presentation refactor, with no image differences.
