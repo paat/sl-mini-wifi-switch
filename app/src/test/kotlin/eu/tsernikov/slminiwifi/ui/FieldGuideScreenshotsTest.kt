@@ -2,6 +2,7 @@ package eu.tsernikov.slminiwifi.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsActions
@@ -18,6 +19,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -82,6 +84,23 @@ class FieldGuideScreenshotsTest {
     @Test fun refusedHelpDark() = error(WifiOffError.Refused, true)
     @Test fun unreachableHelpLight() = error(WifiOffError.CantReach, false)
     @Test fun unreachableHelpDark() = error(WifiOffError.CantReach, true)
+
+    @Test fun guideStepChangesStartAtTopAtLargeFontIncludingBackAndAlternatePaths() {
+        val step = mutableStateOf(GuideStep.Reset)
+        show(false, 2f) { GuideStepScreen(step.value, {}, {}, {}, {}, {}, false) }
+        // Forward, alternate connection path, and Back all create fresh scroll state.
+        for (next in listOf(GuideStep.Light, GuideStep.Cable, GuideStep.Wifi,
+            GuideStep.AndroidConnect, GuideStep.Check, GuideStep.AndroidConnect,
+            GuideStep.Wifi, GuideStep.Cable, GuideStep.Light, GuideStep.Reset)) {
+            val scroll = compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange))
+            scroll.performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 10_000f) }
+            val range = scroll.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange]
+            if (range.maxValue() > 0f) org.junit.Assert.assertTrue("${step.value} scrolled", range.value() > 0f)
+            compose.runOnIdle { step.value = next }
+            compose.onNodeWithText("Back").assertIsDisplayed()
+            assertEquals(0f, scroll.fetchSemanticsNode().config[SemanticsProperties.VerticalScrollAxisRange].value())
+        }
+    }
 
     @Test fun lightAnimationFinishesOffAndStaysOff() {
         compose.mainClock.autoAdvance = false

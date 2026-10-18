@@ -22,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -51,54 +52,56 @@ fun GuideStepScreen(
     onConnect: () -> Unit,
     animateGuides: Boolean = true,
 ) {
-    Screen {
-        SecondaryButton(R.string.back, onBack)
-        when (step) {
-            GuideStep.Reset -> {
-                Heading(stringResource(R.string.reset_title))
-                Text(stringResource(R.string.field_reset_warning))
-                ResetIllustration(animateGuides)
-                Text(stringResource(R.string.reset_press))
-                PrimaryButton(R.string.field_reset_next, onNext)
-            }
-            GuideStep.Light -> {
-                Heading(stringResource(R.string.field_light_title))
-                ResetLightIllustration(animateGuides)
-                Text(stringResource(R.string.reset_light))
-                WaitingProgress(animateGuides)
-                Text(stringResource(R.string.reset_wait))
-                PrimaryButton(R.string.field_light_next, onNext)
-            }
-            GuideStep.Cable -> {
-                Heading(stringResource(R.string.cable_title))
-                CableIllustration(animateGuides)
-                Text(stringResource(R.string.cable_body))
-                PrimaryButton(R.string.field_cable_next, onNext)
-                SecondaryButton(R.string.field_use_wifi, onUseWifi)
-            }
-            GuideStep.Wifi -> {
-                Heading(stringResource(R.string.field_wifi_title))
-                JoinWifiIllustration()
-                Text(stringResource(R.string.field_wifi_body))
-                PrimaryButton(R.string.field_next, onNext)
-                SecondaryButton(R.string.field_use_cable, onUseCable)
-            }
-            GuideStep.AndroidConnect -> {
-                Heading(stringResource(R.string.field_android_title))
-                ConnectionDialogIllustration()
-                Text(stringResource(R.string.field_android_body))
-                PrimaryButton(R.string.join_starlink, onConnect)
-                Text(stringResource(R.string.field_android_manual))
-                SecondaryButton(R.string.field_next, onNext)
-            }
-            GuideStep.Check -> {
-                Heading(stringResource(R.string.field_check_title))
-                Image(
-                    painterResource(R.drawable.ic_find), stringResource(R.string.not_found_icon_description),
-                    Modifier.size(80.dp), colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
-                )
-                Text(stringResource(R.string.field_check_body))
-                PrimaryButton(R.string.field_check_next, onNext)
+    key(step) {
+        Screen {
+            SecondaryButton(R.string.back, onBack)
+            when (step) {
+                GuideStep.Reset -> {
+                    Heading(stringResource(R.string.reset_title))
+                    Text(stringResource(R.string.field_reset_warning))
+                    ResetIllustration(animateGuides)
+                    Text(stringResource(R.string.reset_press))
+                    PrimaryButton(R.string.field_reset_next, onNext)
+                }
+                GuideStep.Light -> {
+                    Heading(stringResource(R.string.field_light_title))
+                    ResetLightIllustration(animateGuides)
+                    Text(stringResource(R.string.reset_light))
+                    WaitingProgress(animateGuides)
+                    Text(stringResource(R.string.reset_wait))
+                    PrimaryButton(R.string.field_light_next, onNext)
+                }
+                GuideStep.Cable -> {
+                    Heading(stringResource(R.string.cable_title))
+                    CableIllustration(animateGuides)
+                    Text(stringResource(R.string.cable_body))
+                    PrimaryButton(R.string.field_cable_next, onNext)
+                    SecondaryButton(R.string.field_use_wifi, onUseWifi)
+                }
+                GuideStep.Wifi -> {
+                    Heading(stringResource(R.string.field_wifi_title))
+                    JoinWifiIllustration()
+                    Text(stringResource(R.string.field_wifi_body))
+                    PrimaryButton(R.string.field_next, onNext)
+                    SecondaryButton(R.string.field_use_cable, onUseCable)
+                }
+                GuideStep.AndroidConnect -> {
+                    Heading(stringResource(R.string.field_android_title))
+                    ConnectionDialogIllustration()
+                    Text(stringResource(R.string.field_android_body))
+                    PrimaryButton(R.string.join_starlink, onConnect)
+                    Text(stringResource(R.string.field_android_manual))
+                    SecondaryButton(R.string.field_next, onNext)
+                }
+                GuideStep.Check -> {
+                    Heading(stringResource(R.string.field_check_title))
+                    Image(
+                        painterResource(R.drawable.ic_find), stringResource(R.string.not_found_icon_description),
+                        Modifier.size(80.dp), colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
+                    )
+                    Text(stringResource(R.string.field_check_body))
+                    PrimaryButton(R.string.field_check_next, onNext)
+                }
             }
         }
     }
