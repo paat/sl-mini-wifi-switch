@@ -68,6 +68,17 @@ Verification after a write:
 - **Bypass:** expect the router to stop answering and, on Ethernet, a CGNAT address within about 60 s. On Wi-Fi the connection drops; say so before sending.
 - **Secure Wi-Fi:** poll `wifi_get_config` until `setup_complete` is true and the BSS auth is no longer `auth_open`. The router restarts once; tolerate 1–2 minutes of no answer.
 
+The Wi-Fi-off flow holds the connection that reported setup pending until the explicit
+confirmation tap. It sends once and uses read-only probes for up to 60 seconds,
+including the send time. Ethernet success requires silence at the original router
+address, a readable dish at `192.168.100.1`, and a `100.64.0.0/10` address when IPv4
+addresses are visible. A recreated Ethernet network must use the same cable adapter
+interface. Any router HTTP response (even malformed or refused) prevents success.
+Loss of the original setup Wi-Fi is labelled likely success, including when the write
+reply was lost. A device refusal takes precedence over a dropped connection.
+Leaving the foreground or recreating the activity during a write leads to reconnect
+guidance; it never restores or retries the send. Reconnecting only reads the state.
+
 ## Quick-switch extras (later milestones)
 
 - One saved profile (name + password) so secure Wi-Fi setup is one tap after a reset.

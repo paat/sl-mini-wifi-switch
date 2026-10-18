@@ -80,6 +80,42 @@ class StarlinkNetworksTest {
         assertEquals(ethernet, networks.findAvailable()?.network)
     }
 
+    @Test fun verificationObservesOnlyTheSelectedLinkAndItsChangingAddress() {
+        val ethernet = addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
+        val selected = networks.findAvailable()!!
+        assertTrue(networks.isPresent(selected))
+        assertTrue(networks.isEthernet(selected))
+        assertEquals(listOf("192.168.1.42"), networks.ipv4Addresses(selected))
+        shadow.setLinkProperties(ethernet, LinkProperties().apply {
+            setLinkAddresses(listOf(linkAddress("100.76.233.16", 10)))
+        })
+        assertEquals(listOf("100.76.233.16"), networks.ipv4Addresses(selected))
+        shadow.clearAllNetworks()
+        addNetwork(2, NetworkCapabilities.TRANSPORT_CELLULAR)
+        assertFalse(networks.isPresent(selected))
+        assertNull(networks.findAvailable())
+    }
+
+    @Test fun replacementEthernetMustBelongToTheOriginalCableAdapter() {
+        val original = addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
+        shadow.setLinkProperties(original, LinkProperties().apply { interfaceName = "eth0" })
+        val originalName = networks.interfaceName(StarlinkConnection(original, "192.168.1.1"))
+        shadow.clearAllNetworks()
+        val unrelated = addNetwork(2, NetworkCapabilities.TRANSPORT_ETHERNET)
+        shadow.setLinkProperties(unrelated, LinkProperties().apply {
+            interfaceName = "eth1"
+            setLinkAddresses(listOf(linkAddress("100.70.0.1", 10)))
+        })
+        assertNull(networks.findEthernetOnInterface(originalName))
+        assertNull(networks.findEthernetOnInterface(null))
+        val replacement = addNetwork(3, NetworkCapabilities.TRANSPORT_ETHERNET)
+        shadow.setLinkProperties(replacement, LinkProperties().apply {
+            interfaceName = "eth0"
+            setLinkAddresses(listOf(linkAddress("100.76.233.16", 10)))
+        })
+        assertEquals(replacement, networks.findEthernetOnInterface(originalName)?.network)
+    }
+
     @Test fun ethernetWithOnlyLinkLocalAddressDoesNotMaskStarlinkWifi() {
         val ethernet = addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
         shadow.setLinkProperties(ethernet, LinkProperties().apply {

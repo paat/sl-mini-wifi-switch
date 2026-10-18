@@ -25,6 +25,7 @@ android {
         unitTests.all {
             it.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
             it.systemProperty("m1.screenshots.dir", rootProject.file("docs/screenshots/m1").absolutePath)
+            it.systemProperty("m2.screenshots.dir", rootProject.file("docs/screenshots/m2").absolutePath)
             it.maxHeapSize = "2g"
         }
     }

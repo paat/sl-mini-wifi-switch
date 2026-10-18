@@ -1,0 +1,5 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="320dp" android:height="100dp" android:viewportWidth="320" android:viewportHeight="100">
+    <!-- Original light sequence: rays show blinking, an empty ring shows off; arrow shows order. -->
+    <path android:fillColor="#00000000" android:strokeColor="#FF000000" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M28,10 L110,10 L104,89 L34,89 Z M210,10 L292,10 L286,89 L216,89 Z M79,50 A10,10 0,1 1,59 50 A10,10 0,1 1,79 50 M261,50 A10,10 0,1 1,241 50 A10,10 0,1 1,261 50 M69,29 L69,23 M69,71 L69,77 M48,50 L42,50 M90,50 L96,50 M54,35 L49,30 M84,65 L89,70 M84,35 L89,30 M54,65 L49,70 M128,50 L190,50 M180,41 L190,50 L180,59" />
+    <path android:fillColor="#FF000000" android:pathData="M73,50 A4,4 0,1 1,65 50 A4,4 0,1 1,73 50" />
+</vector>

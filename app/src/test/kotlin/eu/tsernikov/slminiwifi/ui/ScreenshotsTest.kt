@@ -50,10 +50,8 @@ class ScreenshotsTest {
     @Test fun notFoundDark() = home(MiniState.NotFound, true)
     @Test fun detailsLight() = details(false)
     @Test fun detailsDark() = details(true)
-    @Test fun wifiOffPreviewLight() = preview(true, false)
-    @Test fun wifiOffPreviewDark() = preview(true, true)
-    @Test fun wifiOnPreviewLight() = preview(false, false)
-    @Test fun wifiOnPreviewDark() = preview(false, true)
+    @Test fun wifiOnPreviewLight() = preview(false)
+    @Test fun wifiOnPreviewDark() = preview(true)
 
     @Test fun setupPendingLargeFont() {
         var chosen: Boolean? = null
@@ -109,11 +107,11 @@ class ScreenshotsTest {
         assertEquals(1, backs)
     }
 
-    private fun preview(wifiOff: Boolean, dark: Boolean) {
+    private fun preview(dark: Boolean) {
         var backs = 0
-        show(dark) { ComingSoonScreen(wifiOff) { backs++ } }
+        show(dark) { ComingSoonScreen() { backs++ } }
         compose.onNodeWithText("This step comes in the next version. Your Mini is ready and waiting.").assertIsDisplayed()
-        capture("preview_wifi_${if (wifiOff) "off" else "on"}_${theme(dark)}")
+        capture("preview_wifi_on_${theme(dark)}")
         compose.onNodeWithText("Back").performClick()
         assertEquals(1, backs)
     }

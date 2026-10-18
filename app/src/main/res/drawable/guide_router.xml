@@ -1,0 +1,4 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="320dp" android:height="130dp" android:viewportWidth="320" android:viewportHeight="130">
+    <!-- Original project artwork: Mini, cable, arrow, router with a double-bordered Internet port. -->
+    <path android:fillColor="#00000000" android:strokeColor="#FF000000" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M18,18 L104,18 L96,75 L26,75 Z M44,76 L39,89 L82,89 L77,76 M54,75 L66,75 L66,83 L54,83 Z M60,84 L60,113 L240,113 M209,40 L306,40 L306,87 L209,87 Z M218,40 L218,12 M297,40 L297,12 M231,64 L250,64 L250,86 L231,86 Z M235,68 L246,68 L246,81 L235,81 Z M260,68 L271,68 L271,80 L260,80 Z M280,68 L291,68 L291,80 L280,80 Z M127,63 L184,63 M176,55 L184,63 L176,71" />
+</vector>

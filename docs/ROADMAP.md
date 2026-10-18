@@ -20,9 +20,9 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 
 ## M2: Wi-Fi off (bypass)
 
-- [ ] Confirm screen that states the consequences (UX.md, Wi-Fi off specifics)
-- [ ] Send `wifi_setup{bypass}` and verify as described in ARCHITECTURE.md
-- [ ] Result screen: connect the Mini's cable to the router's internet (WAN) port, with illustration; how to undo
+- [x] Confirm screen that states the consequences (UX.md, Wi-Fi off specifics)
+- [x] Send `wifi_setup{bypass}` and verify as described in ARCHITECTURE.md
+- [x] Result screen: connect the Mini's cable to the router's internet (WAN) port, with illustration; how to undo
 - [ ] Hardware test by a human, over Ethernet and over the setup Wi-Fi
 
 ## M3: Secure Wi-Fi
