@@ -36,17 +36,13 @@ class MiniStateDetector(private val nowMillis: () -> Long = { System.nanoTime() 
     val rebootTimeRemainingMillis: Long?
         get() = lostAt?.let { (REBOOT_TIMEOUT_MILLIS - (nowMillis() - it)).coerceAtLeast(0L) }
 
-    /** An intentional network release is not evidence of a Mini restart. */
+    /** Intentional release cannot start a restart wait, or erase a wait already in progress. */
     fun clearHistory() {
-        lastReachableAt = null
-        lostAt = null
+        if (lostAt == null) lastReachableAt = null
     }
 
-    /** A canceled probe did not establish absence; preserve details and expose the uncertainty. */
-    fun probeTimedOut(): MiniSnapshot {
-        clearHistory()
-        return MiniSnapshot(MiniState.NotFound, lastDetails, probeTimedOut = true)
-    }
+    /** A timeout keeps the original restart deadline and exposes the uncertain probe. */
+    fun probeTimedOut(): MiniSnapshot = unreachable(nowMillis(), lastDetails).copy(probeTimedOut = true)
 
     /** Skip recording a miss while the owner still has other network candidates to probe. */
     suspend fun detect(

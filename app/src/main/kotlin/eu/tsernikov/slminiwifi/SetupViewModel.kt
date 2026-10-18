@@ -202,7 +202,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         polling?.cancel()
         if (screen == Screen.WifiOffProgress || screen == Screen.WifiOnProgress) return
         connecting?.cancel()
-        releaseConnection()
+        networks.releaseRequest()
         if (screen == Screen.WifiOff || screen == Screen.WifiOn || screen == Screen.WifiOnConfirm) {
             confirmedConnection = null
         }

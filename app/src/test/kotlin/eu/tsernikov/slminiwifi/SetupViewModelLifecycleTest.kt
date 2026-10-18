@@ -202,7 +202,7 @@ class SetupViewModelLifecycleTest {
         } finally { controller.destroy(); Dispatchers.resetMain() }
     }
 
-    @Test fun homeKeepsPollingThroughRebootUntilMiniAnswersAgain() = runTest {
+    @Test fun homeKeepsRebootDeadlineThroughStopStartUntilMiniAnswersAgain() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val model = SetupViewModel(application)
         val store = ViewModelStore().apply { put("setup", model) }
@@ -227,16 +227,26 @@ class SetupViewModelLifecycleTest {
             assertEquals(MiniState.Configured, model.snapshot.state)
             val polling = model.polling
             reachable = false
+            model.stop()
+            model.start()
             advanceTimeBy(3_000)
             runCurrent()
             assertEquals(MiniState.Rebooting, model.snapshot.state)
             assertEquals(Screen.Home, model.screen)
+            val remaining = model.detector.rebootTimeRemainingMillis!!
+            model.stop()
+            model.start()
+            runCurrent()
+            assertEquals(MiniState.Rebooting, model.snapshot.state)
+            assertTrue(model.detector.rebootTimeRemainingMillis!! <= remaining)
+            val resumedPolling = model.polling
             val readsDuringReboot = reads
             advanceTimeBy(3_000)
             runCurrent()
             assertTrue(reads > readsDuringReboot)
-            assertSame(polling, model.polling)
-            assertTrue(polling!!.isActive)
+            assertFalse(polling!!.isActive)
+            assertSame(resumedPolling, model.polling)
+            assertTrue(resumedPolling!!.isActive)
             reachable = true
             advanceTimeBy(3_000)
             runCurrent()

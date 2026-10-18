@@ -119,6 +119,25 @@ class MiniStateDetectorTest {
         assertNull(detector.rebootTimeRemainingMillis)
     }
 
+    @Test fun probeTimeoutAndReleasePreserveTheOriginalRestartDeadline() {
+        val initial = detect()
+        now = 3_000
+        assertEquals(MiniState.Rebooting, detect(null).state)
+        now = 30_000
+        val timeout = detector.probeTimedOut()
+        assertEquals(MiniState.Rebooting, timeout.state)
+        assertTrue(timeout.probeTimedOut)
+        assertEquals(initial.details, timeout.details)
+        assertEquals(153_000L, detector.rebootTimeRemainingMillis)
+        detector.clearHistory()
+        assertEquals(153_000L, detector.rebootTimeRemainingMillis)
+        now = 182_999
+        assertEquals(MiniState.Rebooting, detector.probeTimedOut().state)
+        now = 183_000
+        assertEquals(MiniState.NotFound, detector.probeTimedOut().state)
+        assertNull(detector.rebootTimeRemainingMillis)
+    }
+
     @Test fun timedOutProbeRetainsDetailsAndMarksUncertaintyWithoutRecordingAbsence() {
         val initial = detect()
         now += 3_000

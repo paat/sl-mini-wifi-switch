@@ -75,7 +75,7 @@ address, a readable dish at `192.168.100.1`, and a `100.64.0.0/10` address. When
 interface. Any router HTTP response (even malformed or refused) prevents success.
 Loss of setup Wi-Fi is labelled likely success only after an acknowledged write or after the request body was transmitted; a replacement STARLINK handle prevents that inference. A device refusal takes precedence over a dropped connection.
 
-A retained ViewModel owns flow state, the app-local network request, and bounded verification. Rotation and backgrounding preserve an in-flight operation; neither creates another send. Returning to a confirmation screen re-acquires and re-probes the network before enabling Confirm. Intentional network release clears restart history. Process death never restores a write: interrupted progress opens reconnect guidance, and an unsent confirmation never claims a write failed.
+A retained ViewModel owns flow state, the app-local network request, and bounded verification. Rotation and backgrounding preserve an in-flight operation; neither creates another send. Returning to a confirmation screen re-acquires and re-probes the network before enabling Confirm. Intentional network release clears recent reachability only outside an active restart wait. Probe timeout and backgrounding preserve the original restart deadline. Process death never restores a write: interrupted progress opens reconnect guidance, and an unsent confirmation never claims a write failed.
 
 The secure-Wi-Fi flow also pins the connection that reported setup pending. It saves
 one profile encrypted with an Android Keystore AES-256-GCM key before sending a
