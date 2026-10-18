@@ -4,8 +4,8 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 
 ## M0: Project and protocol library
 
-- [ ] Gradle project with `:protocol` (JVM) and `:app` (Android), version catalog, Apache-2.0 headers optional
-- [ ] CI on GitHub Actions: `./gradlew build test` on push and PR
+- [x] Gradle project with `:protocol` (JVM) and `:app` (Android), version catalog, Apache-2.0 headers optional
+- [x] CI on GitHub Actions: `./gradlew build test` on push and PR
 - [ ] `:protocol` varint and length-delimited encode/decode
 - [ ] gRPC-web framing: build request frame; parse data frames, trailer frame, and header-only status
 - [ ] Request builders for every file in `tools/vectors/*.request.hex`, each with a byte-exact unit test

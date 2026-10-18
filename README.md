@@ -7,7 +7,21 @@ An open-source Android app that switches a **Starlink Mini** between two field m
 | **Wi-Fi off** (bypass) | Built-in Wi-Fi and router are off. The Ethernet port hands one wired device an internet address straight from Starlink. | Semi-permanent spot where you want a small RF footprint. |
 | **Secure Wi-Fi** | Built-in router on, Wi-Fi with your own name and password. | Quick stop: power bank in, phone or laptop on Wi-Fi, pack up. |
 
-> **Status: pre-alpha, documentation only.** Bypass, Wi-Fi name and Wi-Fi password setup have each been verified by hand on one Starlink Mini (see [docs/FINDINGS.md](docs/FINDINGS.md)). No app code exists yet. [AGENTS.md](AGENTS.md) explains how a coding agent should take it from here.
+> **Status: pre-alpha, placeholder app.** Bypass, Wi-Fi name and Wi-Fi password setup have each been verified by hand on one Starlink Mini (see [docs/FINDINGS.md](docs/FINDINGS.md)). The Gradle project builds a placeholder screen; setup and status features are not implemented yet. [AGENTS.md](AGENTS.md) explains how a coding agent should take it from here.
+
+## Build
+
+Use JDK 21 and an Android SDK with platform 37 and Build Tools 36.0.0. Set
+`ANDROID_HOME` to the SDK directory, or put `sdk.dir=/path/to/android-sdk` in
+an untracked `local.properties` file. The wrapper downloads Gradle automatically.
+
+```bash
+./gradlew --no-daemon clean build test
+```
+
+The `:protocol` module is pure Kotlin/JVM; `:app` is the Android Compose app.
+Dependency, plugin, and SDK versions live in `gradle/libs.versions.toml`; the
+wrapper distribution and checksum are pinned in `gradle/wrapper/gradle-wrapper.properties`.
 
 ## How it works
 
