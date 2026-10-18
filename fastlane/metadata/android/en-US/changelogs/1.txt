@@ -1,0 +1,3 @@
+First version of Mini Wi-Fi Switch.
+
+The app has its icon and a short opening screen. The guided setup steps come later. It works offline and does not track you.
