@@ -46,11 +46,15 @@ fun WifiOnSetupScreen(
     onContinue: () -> Unit,
     onBack: () -> Unit,
     @StringRes message: Int? = null,
+    onHelp: (() -> Unit)? = null,
 ) {
     var showPassword by remember { mutableStateOf(false) }
     Screen {
         Heading(stringResource(R.string.wifi_secure))
-        message?.let { Text(stringResource(it)) }
+        message?.let {
+            Text(stringResource(it))
+            onHelp?.let { help -> SecondaryButton(R.string.show_reset_steps, help) }
+        }
         // Rules precede both inputs so they are visible before editing starts.
         Text(stringResource(R.string.wifi_on_name_rule, WifiRules.MIN_NAME_BYTES, WifiRules.MAX_NAME_BYTES))
         Text(stringResource(R.string.wifi_on_password_rule, WifiRules.MIN_PASSWORD_LENGTH, WifiRules.MAX_PASSWORD_LENGTH))
@@ -120,6 +124,7 @@ fun WifiOnResultScreen(
     onDone: () -> Unit,
     @StringRes connectionMessage: Int? = null,
     verified: Boolean = true,
+    onHelp: (() -> Unit)? = null,
 ) {
     Screen {
         if (verified) WifiReadyIcon() else Image(
@@ -138,6 +143,9 @@ fun WifiOnResultScreen(
         PrimaryButton(R.string.wifi_on_connect, onConnect)
         SecondaryButton(R.string.details, onDetails)
         SecondaryButton(R.string.done, onDone)
+        if (!verified || connectionMessage != null) {
+            onHelp?.let { SecondaryButton(R.string.show_reset_steps, it) }
+        }
     }
 }
 

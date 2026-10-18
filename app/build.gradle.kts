@@ -76,6 +76,7 @@ android {
             it.systemProperty("m1.screenshots.dir", rootProject.file("docs/screenshots/m1").absolutePath)
             it.systemProperty("m2.screenshots.dir", rootProject.file("docs/screenshots/m2").absolutePath)
             it.systemProperty("m3.screenshots.dir", rootProject.file("docs/screenshots/m3").absolutePath)
+            it.systemProperty("m4.screenshots.dir", rootProject.file("docs/screenshots/m4").absolutePath)
             it.maxHeapSize = "2g"
         }
     }

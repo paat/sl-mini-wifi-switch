@@ -40,6 +40,8 @@ import eu.tsernikov.slminiwifi.state.WifiOnFlow
 import eu.tsernikov.slminiwifi.state.WifiOnOutcome
 import eu.tsernikov.slminiwifi.state.probeWifiOff
 import eu.tsernikov.slminiwifi.ui.DetailsScreen
+import eu.tsernikov.slminiwifi.ui.GuideStep
+import eu.tsernikov.slminiwifi.ui.GuideStepScreen
 import eu.tsernikov.slminiwifi.ui.HomeScreen
 import eu.tsernikov.slminiwifi.ui.MiniTheme
 import eu.tsernikov.slminiwifi.ui.ResetGuideScreen
@@ -67,7 +69,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 /** Owns foreground, app-local connections. Writes require a separate confirmation tap. */
 class MainActivity : ComponentActivity() {
     private enum class Screen {
-        Home, Details, WifiOff, WifiOffProgress, WifiOffResult, WifiOffError, ResetGuide,
+        Home, Details, WifiOff, WifiOffProgress, WifiOffResult, WifiOffError, ResetGuide, FieldGuide,
         WifiOn, WifiOnConfirm, WifiOnProgress, WifiOnResult, WifiOnConnect,
     }
     private enum class PermissionAction { Check, Connect, SecureWifi }
@@ -101,6 +103,9 @@ class MainActivity : ComponentActivity() {
     private var wifiOffError by mutableStateOf(WifiOffError.CantReach)
     private var likelySuccess by mutableStateOf(false)
     private var detailsReturn = Screen.Home
+    private var helpReturn = Screen.Home
+    private var guideStep by mutableStateOf(GuideStep.Reset)
+    private var guideCheckBack = GuideStep.Cable
     private var foreground = false
     private var pendingPermissionAction = PermissionAction.Check
     private var snapshot by mutableStateOf(MiniSnapshot(MiniState.NotFound))
@@ -165,6 +170,13 @@ class MainActivity : ComponentActivity() {
             Screen.WifiOffResult.name -> Screen.WifiOffResult
             else -> if (savedInstanceState?.getBoolean("detailsFromResult") == true) Screen.WifiOffResult else Screen.Home
         }
+        guideStep = savedInstanceState?.getString("guideStep")?.let { name ->
+            GuideStep.entries.firstOrNull { it.name == name }
+        } ?: GuideStep.Reset
+        guideCheckBack = if (savedInstanceState?.getString("guideCheckBack") == GuideStep.AndroidConnect.name) {
+            GuideStep.AndroidConnect
+        } else GuideStep.Cable
+        restoreHelpReturn(savedInstanceState?.getString("helpReturn"))
         enableEdgeToEdge()
         setContent {
             MiniTheme {
@@ -174,6 +186,8 @@ class MainActivity : ComponentActivity() {
                             screen == Screen.Details && detailsReturn != Screen.Home -> screen = detailsReturn
                             screen == Screen.WifiOnConnect -> screen = Screen.WifiOnResult
                             screen == Screen.WifiOnConfirm -> screen = Screen.WifiOn
+                            screen == Screen.FieldGuide -> guideBack()
+                            screen == Screen.ResetGuide -> closeHelp()
                             else -> returnHome()
                         }
                     }
@@ -185,6 +199,8 @@ class MainActivity : ComponentActivity() {
                         isConnecting = requestingWifi,
                         message = message,
                         onRefresh = { requestAccess(PermissionAction.Check) },
+                        onGuide = ::openGuide,
+                        onHelp = ::openHelp,
                         onConnect = { requestAccess(PermissionAction.Connect) },
                         onDetails = { detailsReturn = Screen.Home; screen = Screen.Details },
                         onSetupChoice = { wifiOff ->
@@ -207,14 +223,14 @@ class MainActivity : ComponentActivity() {
                         onGeneratedPassword = { ownPassword = false; profile = Profile(profile.name, generator.password()) },
                         onUseSaved = { savedProfile?.let { profile = it; ownPassword = true } },
                         onContinue = { if (WifiRules.isValid(profile)) screen = Screen.WifiOnConfirm },
-                        onBack = ::returnHome, message = profileError,
+                        onBack = ::returnHome, message = profileError, onHelp = ::openHelp,
                     )
                     Screen.WifiOnConfirm -> WifiOnConfirmScreen(profile.name, ::confirmWifiOn) { screen = Screen.WifiOn }
                     Screen.WifiOnProgress -> WifiOnProgressScreen()
                     Screen.WifiOnResult -> WifiOnResultScreen(profile,
                         onConnect = { screen = Screen.WifiOnConnect },
                         onDetails = { detailsReturn = Screen.WifiOnResult; screen = Screen.Details },
-                        onDone = ::returnHome, connectionMessage = joinMessage, verified = wifiVerified)
+                        onDone = ::returnHome, connectionMessage = joinMessage, verified = wifiVerified, onHelp = ::openHelp)
                     Screen.WifiOnConnect -> WifiOnAutoConnectScreen(Build.VERSION.SDK_INT == 29,
                         onContinue = {
                             screen = Screen.WifiOnResult
@@ -226,6 +242,7 @@ class MainActivity : ComponentActivity() {
                         onDetails = { detailsReturn = Screen.WifiOffResult; screen = Screen.Details },
                         onDone = ::returnHome)
                     Screen.WifiOffError -> WifiOffErrorScreen(wifiOffError,
+                        onHelp = ::openHelp,
                         unreachableBody = if (secureFlow) R.string.wifi_on_unreachable_body else R.string.wifi_off_unreachable_body,
                         onShowCredentials = if (secureFlow && profileSaved && savedProfile != null && wifiOffError == WifiOffError.CantReach) ({
                             profile = savedProfile!!
@@ -233,11 +250,29 @@ class MainActivity : ComponentActivity() {
                             screen = Screen.WifiOnResult
                         }) else null,
                         onNext = {
-                        if (wifiOffError == WifiOffError.AlreadySetUp) screen = Screen.ResetGuide else returnHome()
+                        if (wifiOffError == WifiOffError.AlreadySetUp) openHelp() else returnHome()
                     })
-                    Screen.ResetGuide -> ResetGuideScreen(onDone = ::returnHome)
+                    Screen.ResetGuide -> ResetGuideScreen(onDone = ::returnHome, onBack = ::closeHelp)
+                    Screen.FieldGuide -> GuideStepScreen(
+                        step = guideStep, onBack = ::guideBack, onNext = ::guideNext,
+                        onUseWifi = { guideStep = GuideStep.Wifi },
+                        onUseCable = { guideStep = GuideStep.Cable },
+                        onConnect = {
+                            screen = Screen.Home
+                            requestAccess(PermissionAction.Connect)
+                        },
+                    )
                 }
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.action == SetupLaunch.ACTION &&
+            screen != Screen.WifiOffProgress && screen != Screen.WifiOnProgress) {
+            returnHome()
         }
     }
 
@@ -277,6 +312,9 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        outState.putString("guideStep", guideStep.name)
+        outState.putString("guideCheckBack", guideCheckBack.name)
+        outState.putString("helpReturn", helpReturn.name)
         outState.putBoolean("secureFlow", secureFlow)
         outState.putBoolean("profileSaved", profileSaved)
         outState.putBoolean("wifiVerified", wifiVerified)
@@ -285,6 +323,59 @@ class MainActivity : ComponentActivity() {
         outState.putBoolean("likelySuccess", likelySuccess)
         outState.putString("detailsReturn", detailsReturn.name)
         super.onSaveInstanceState(outState)
+    }
+
+    private fun openGuide() {
+        screen = Screen.FieldGuide
+        polling?.cancel()
+        connecting?.cancel()
+        confirmedConnection = null
+        guideStep = GuideStep.Reset
+    }
+
+    private fun guideNext() {
+        guideStep = when (guideStep) {
+            GuideStep.Reset -> GuideStep.Light
+            GuideStep.Light -> GuideStep.Cable
+            GuideStep.Cable -> { guideCheckBack = GuideStep.Cable; GuideStep.Check }
+            GuideStep.Wifi -> GuideStep.AndroidConnect
+            GuideStep.AndroidConnect -> { guideCheckBack = GuideStep.AndroidConnect; GuideStep.Check }
+            GuideStep.Check -> { returnHome(); return }
+        }
+    }
+
+    private fun guideBack() {
+        guideStep = when (guideStep) {
+            GuideStep.Reset -> { returnHome(); return }
+            GuideStep.Light -> GuideStep.Reset
+            GuideStep.Cable -> GuideStep.Light
+            GuideStep.Wifi -> GuideStep.Cable
+            GuideStep.AndroidConnect -> GuideStep.Wifi
+            GuideStep.Check -> guideCheckBack
+        }
+    }
+
+    private fun openHelp() {
+        helpReturn = screen
+        screen = Screen.ResetGuide
+        polling?.cancel()
+        connecting?.cancel()
+    }
+
+    private fun restoreHelpReturn(name: String?) {
+        helpReturn = when (name) {
+            Screen.WifiOffError.name -> Screen.WifiOffError
+            Screen.WifiOnResult.name -> if (profileSaved && savedProfile != null) {
+                profile = savedProfile!!
+                Screen.WifiOnResult
+            } else Screen.Home
+            else -> Screen.Home
+        }
+    }
+
+    private fun closeHelp() {
+        screen = helpReturn
+        if (screen == Screen.Home) startPolling(showProgress = true)
     }
 
     private fun returnHome() {

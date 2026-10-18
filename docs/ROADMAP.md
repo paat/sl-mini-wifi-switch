@@ -41,12 +41,14 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 
 ## M4: Field use and visual guides
 
-- [ ] Illustrations drawn for the project (vector / animated vector drawables) for every physical step in UX.md: reset symbol location and press, light behaviour, cable and adapter, joining STARLINK, router WAN port
-- [ ] Guided step-by-step flow from the home screen, using those illustrations
-- [ ] Quick Settings tile and app shortcut into the pending-setup action
-- [ ] Offline help screen with the reset steps
-- [ ] Clear progress and timeouts during the 1–2 minute reboots
-- [ ] Field-condition checks: 200% font size, sunlight contrast, TalkBack, 64 dp primary buttons
+- [x] Project-drawn vectors for every physical step: reset symbol/three-second press, blinking-then-off light, cable and adapter, joining STARLINK, Android Connect dialog, router WAN port, restart; described and still when animations are removed
+- [x] Guided step-by-step flow from Home through reset, wait, connection and existing detection, with Back/Next and cable/Wi-Fi alternatives
+- [x] Quick Settings tile and app shortcut into Home detection and the pending-setup choices; API 34+ PendingIntent and safe task reuse
+- [x] Offline reset help from Home and every error presentation, with Back and Check again
+- [x] Shared visible progress with expected times and recovery guidance during reboots; existing bounded verification unchanged
+- [x] Software field-condition checks: scrollable 200% text, WCAG AA body contrast in both themes, labelled illustrations, 64 dp primary buttons and 48 dp touch targets
+- [x] JVM/Compose coverage and light/dark/200% guide/help/wait screenshots in `docs/screenshots/m4/`
+- [ ] Human field checks: TalkBack walkthrough, sunlight/glove readability, reduced motion and illustration accuracy, Quick Settings tile and shortcut on real phones (TESTING.md M4)
 
 ## M5: Release
 

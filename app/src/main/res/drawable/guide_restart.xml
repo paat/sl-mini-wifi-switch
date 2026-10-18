@@ -1,0 +1,4 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="320dp" android:height="144dp" android:viewportWidth="320" android:viewportHeight="144">
+    <!-- Project-drawn front of a generic Mini, with its power cable retained. -->
+    <path android:fillColor="#00000000" android:strokeColor="#FF000000" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M68,16 L185,16 L178,112 L75,112 Z M81,29 L172,29 L167,99 L86,99 Z M115,113 L111,129 L143,129 L139,113 M177,108 L188,108 Q200,108 200,120 L200,131 L231,131" />
+</vector>

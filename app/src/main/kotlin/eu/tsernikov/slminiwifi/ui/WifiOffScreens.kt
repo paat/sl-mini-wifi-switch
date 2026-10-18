@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,6 +65,7 @@ internal fun SetupProgressScreen(
     @StringRes body: Int,
     @StringRes time: Int,
     @StringRes help: Int,
+    animateGuides: Boolean = true,
 ) {
     Screen {
         Image(
@@ -73,7 +74,8 @@ internal fun SetupProgressScreen(
         )
         Heading(stringResource(title))
         Text(stringResource(body))
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        RestartIllustration(animateGuides)
+        WaitingProgress(animateGuides)
         Text(stringResource(time))
         Text(stringResource(help))
     }
@@ -109,6 +111,7 @@ fun WifiOffErrorScreen(
     animateGuides: Boolean = true,
     @StringRes unreachableBody: Int = R.string.wifi_off_unreachable_body,
     onShowCredentials: (() -> Unit)? = null,
+    onHelp: (() -> Unit)? = null,
 ) {
     val title = when (error) {
         WifiOffError.AlreadySetUp -> R.string.wifi_off_already_title
@@ -135,22 +138,28 @@ fun WifiOffErrorScreen(
             onNext,
         )
         onShowCredentials?.let { SecondaryButton(R.string.wifi_on_show_credentials, it) }
+        onHelp?.let { SecondaryButton(R.string.field_reset_help, it) }
     }
 }
 
+/** All text and drawings are bundled; this card needs no connection. */
 @Composable
-fun ResetGuideScreen(onDone: () -> Unit, animateGuides: Boolean = true) {
+fun ResetGuideScreen(
+    onDone: () -> Unit,
+    animateGuides: Boolean = true,
+    onBack: () -> Unit = onDone,
+) {
     Screen {
+        SecondaryButton(R.string.back, onBack)
         Heading(stringResource(R.string.reset_title))
+        Text(stringResource(R.string.field_offline_note))
+        Text(stringResource(R.string.field_reset_warning))
         Text(stringResource(R.string.reset_press))
         ResetIllustration(animateGuides)
         Text(stringResource(R.string.reset_light))
-        Image(
-            painterResource(R.drawable.guide_reset_light), stringResource(R.string.reset_light_description),
-            Modifier.fillMaxWidth().height(100.dp),
-            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
-        )
+        ResetLightIllustration(animateGuides)
         Text(stringResource(R.string.reset_wait))
+        RestartIllustration(animateGuides)
         Text(stringResource(R.string.reset_ready))
         PrimaryButton(R.string.check_again, onDone)
     }
@@ -158,7 +167,7 @@ fun ResetGuideScreen(onDone: () -> Unit, animateGuides: Boolean = true) {
 
 /** Original vectors. The plug moves into the labelled port; labels scale with system text. */
 @Composable
-private fun RouterIllustration(animate: Boolean) {
+internal fun RouterIllustration(animate: Boolean) {
     val description = stringResource(R.string.wifi_off_router_description)
     val position = insertionPosition(animate)
     Column(
@@ -190,9 +199,9 @@ private fun RouterIllustration(animate: Boolean) {
 }
 
 @Composable
-private fun ResetIllustration(animate: Boolean) {
+internal fun ResetIllustration(animate: Boolean) {
     val description = stringResource(R.string.reset_press_description)
-    val position = insertionPosition(animate)
+    val position = insertionPosition(animate, press = true)
     Box(Modifier.fillMaxWidth().height(144.dp).clearAndSetSemantics { contentDescription = description }) {
         Image(
             painterResource(R.drawable.guide_reset), contentDescription = null,
@@ -208,12 +217,18 @@ private fun ResetIllustration(animate: Boolean) {
 }
 
 @Composable
-private fun insertionPosition(animate: Boolean): Float {
-    if (!animate) return 0f
+private fun insertionPosition(animate: Boolean, press: Boolean = false): Float {
+    if (!rememberGuideAnimationsEnabled(animate)) return 0f
     val transition = rememberInfiniteTransition(label = "plug or press")
     val position by transition.animateFloat(
         initialValue = 8f, targetValue = 0f,
-        animationSpec = infiniteRepeatable(tween(1400), RepeatMode.Reverse),
+        animationSpec = if (press) infiniteRepeatable(keyframes {
+            durationMillis = 4500
+            8f at 0
+            0f at 500
+            0f at 3500 // Show a full three-second hold before releasing.
+            8f at 4000
+        }, RepeatMode.Restart) else infiniteRepeatable(tween(1400), RepeatMode.Reverse),
         label = "insertion position",
     )
     return position

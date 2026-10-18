@@ -13,6 +13,7 @@ import eu.tsernikov.slminiwifi.data.ProfileBlob
 import eu.tsernikov.slminiwifi.data.ProfileCipher
 import eu.tsernikov.slminiwifi.data.ProfileStore
 import eu.tsernikov.slminiwifi.net.StarlinkConnection
+import eu.tsernikov.slminiwifi.ui.GuideStep
 import eu.tsernikov.slminiwifi.state.MiniSnapshot
 import eu.tsernikov.slminiwifi.state.MiniState
 import kotlinx.coroutines.Dispatchers
@@ -128,6 +129,112 @@ class MainActivityRecoveryTest {
             controller.destroy()
             Dispatchers.resetMain()
         }
+    }
+
+    @Test fun guideWalksBothConnectionPathsAndOnlyReturnsToDetection() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).create()
+        try {
+            val activity = controller.get()
+            invoke(activity, "openGuide")
+            assertEquals("FieldGuide", state<Any>(activity, "screen").toString())
+            assertEquals(GuideStep.Reset, state<GuideStep>(activity, "guideStep"))
+            invoke(activity, "guideNext")
+            assertEquals(GuideStep.Light, state<GuideStep>(activity, "guideStep"))
+            invoke(activity, "guideNext")
+            assertEquals(GuideStep.Cable, state<GuideStep>(activity, "guideStep"))
+            invoke(activity, "guideNext")
+            assertEquals(GuideStep.Check, state<GuideStep>(activity, "guideStep"))
+            invoke(activity, "guideBack")
+            assertEquals(GuideStep.Cable, state<GuideStep>(activity, "guideStep"))
+            setState(activity, "guideStep", GuideStep.Wifi)
+            invoke(activity, "guideNext")
+            assertEquals(GuideStep.AndroidConnect, state<GuideStep>(activity, "guideStep"))
+            invoke(activity, "guideNext")
+            invoke(activity, "guideBack")
+            assertEquals(GuideStep.AndroidConnect, state<GuideStep>(activity, "guideStep"))
+            invoke(activity, "guideNext")
+            invoke(activity, "guideNext")
+            assertEquals("Home", state<Any>(activity, "screen").toString())
+            assertNull(field(activity, "writing"))
+            assertNull(field(activity, "confirmedConnection"))
+        } finally { controller.destroy() }
+    }
+
+    @Test fun guideRestoresStepAndBackAtFirstStepReturnsHome() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).create(Bundle().apply {
+            putString("screen", "FieldGuide")
+            putString("guideStep", "Light")
+        })
+        try {
+            val activity = controller.get()
+            assertEquals(GuideStep.Light, state<GuideStep>(activity, "guideStep"))
+            invoke(activity, "guideBack")
+            assertEquals(GuideStep.Reset, state<GuideStep>(activity, "guideStep"))
+            invoke(activity, "guideBack")
+            assertEquals("Home", state<Any>(activity, "screen").toString())
+            assertNull(field(activity, "writing"))
+        } finally { controller.destroy() }
+    }
+
+    @Test fun offlineHelpReturnsToEachOriginWithoutStartingWork() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).create()
+        try {
+            val activity = controller.get()
+            for (origin in listOf("Home", "WifiOffError", "WifiOn", "WifiOnResult")) {
+                setScreen(activity, origin)
+                invoke(activity, "openHelp")
+                assertEquals("ResetGuide", state<Any>(activity, "screen").toString())
+                assertNull(field(activity, "writing"))
+                invoke(activity, "closeHelp")
+                assertEquals(origin, state<Any>(activity, "screen").toString())
+            }
+        } finally { controller.destroy() }
+    }
+
+    @Test fun quickLaunchReturnsToHomeButKeepsAnActiveConfirmationResultWait() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).create()
+        try {
+            val activity = controller.get()
+            for (origin in listOf("FieldGuide", "ResetGuide", "Details", "WifiOnConfirm")) {
+                setScreen(activity, origin)
+                controller.newIntent(SetupLaunch.intent(activity))
+                assertEquals("Home", state<Any>(activity, "screen").toString())
+                assertNull(field(activity, "writing"))
+            }
+            for (progress in listOf("WifiOffProgress", "WifiOnProgress")) {
+                setScreen(activity, progress)
+                controller.newIntent(SetupLaunch.intent(activity))
+                assertEquals(progress, state<Any>(activity, "screen").toString())
+                assertNull(field(activity, "writing"))
+            }
+        } finally { controller.destroy() }
+    }
+
+    @Test fun helpRestoresTheResultOnlyWithALoadedEncryptedProfile() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).create()
+        try {
+            val activity = controller.get()
+            // Supply the profile-store result to exercise the same restoration used by onCreate.
+            setState(activity, "savedProfile", credentials)
+            setState(activity, "profileSaved", true)
+            setScreen(activity, "ResetGuide")
+            val restore = MainActivity::class.java.getDeclaredMethod("restoreHelpReturn", String::class.java)
+                .apply { isAccessible = true }
+            restore.invoke(activity, "WifiOnResult")
+            invoke(activity, "closeHelp")
+            assertEquals("WifiOnResult", state<Any>(activity, "screen").toString())
+            assertEquals(credentials, state<Profile>(activity, "profile"))
+            setState<Profile?>(activity, "savedProfile", null)
+            setScreen(activity, "ResetGuide")
+            restore.invoke(activity, "WifiOnResult")
+            invoke(activity, "closeHelp")
+            assertEquals("Home", state<Any>(activity, "screen").toString())
+            assertNull(field(activity, "writing"))
+        } finally { controller.destroy() }
+    }
+
+    private fun invoke(activity: MainActivity, method: String) {
+        MainActivity::class.java.getDeclaredMethod(method).apply { isAccessible = true }.invoke(activity)
     }
 
     private fun assertInterruptedScreen(screen: String) {

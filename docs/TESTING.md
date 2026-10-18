@@ -136,3 +136,40 @@ physical factory reset before each write. Do not also send the curl vector.
     Record date, dish/router firmware, connection path, phone/Android version,
     response status, timing, auth on each BSS, boundary results and auto-connect
     observations in FINDINGS.md. Do not tick hardware boxes until these tests run.
+
+
+### M4 app: field guide and quick entry (human only)
+
+These checks remain unperformed. Automated screenshots and contrast calculations
+do not establish sunlight readability or TalkBack usability.
+
+1. With no internet and the Mini within reach, open **Start here**. Follow one step
+   at a time: press the reset icon on the back until it clicks; hold about 3 seconds
+   until the light blinks fast and goes off. Wait about 2 minutes (35–110 seconds
+   previously observed). Check the drawing against the real symbol and indicator.
+   Confirm that the app only says ready after its read-only state check.
+2. Follow both connection paths: USB-C Ethernet adapter into the phone and cable
+   into the Mini; or join STARLINK and tap Connect in Android's message. Exercise
+   Back at each step, including the first step and the cable/Wi-Fi alternatives.
+   Check that the existing two choices appear after detection. No setup write is
+   needed for this guide check. Use the M2/M3 procedures above for actual changes.
+3. In airplane mode, open Reset help from Home and available error screens. Read
+   every reset step and illustration. Back must return to the previous screen;
+   Check again returns to detection. Do not mistake an unlit indicator for ready.
+4. Enable TalkBack and walk through Home, both guide paths, reset help, setup
+   confirmations, waits, results and errors. Check focus order, drawing descriptions,
+   labelled controls, and that the still wait indicator does not announce a fake
+   completion percentage. Enable **Remove animations**, including while a guide
+   is open: diagrams must settle into still final poses.
+5. At 200% font size on a real phone, scroll through both themes and operate every
+   action. Check sunlight readability outdoors and touch use with gloves. Record
+   phone model, font/display settings, theme and any obscured text or missed taps.
+6. Add **Set up Mini** to Quick Settings and tap it. Long-press the app icon and
+   launch its **Set up Mini** shortcut (pin it if the launcher supports this).
+   Test a cold start and reopening from guide/help/details. Both must open Home and
+   detect before showing choices; the tile must not change Wi-Fi or contact the
+   Mini in the background. Check API 34+ and an older phone if available.
+7. During the human-run M2/M3 progress checks, reopen using each quick entry point.
+   The same progress screen must remain; no repeated write or discarded result.
+   Record TalkBack, sunlight and Quick Settings observations in the PR. Record
+   any confirmed hardware facts with date and firmware in FINDINGS.md.
