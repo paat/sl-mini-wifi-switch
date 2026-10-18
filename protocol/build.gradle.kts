@@ -9,3 +9,7 @@ kotlin {
 dependencies {
     testImplementation(libs.junit)
 }
+
+tasks.test {
+    workingDir = rootDir
+}

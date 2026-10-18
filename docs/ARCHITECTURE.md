@@ -5,7 +5,7 @@
 - Kotlin, Jetpack Compose, Material 3
 - minSdk 29 (Android 10: `WifiNetworkSpecifier`, per-network socket factories), targetSdk current
 - OkHttp for HTTP/1.1, with the socket factory of a chosen `android.net.Network`
-- Protobuf: either a small hand-written encoder/decoder in `:protocol` (preferred, the subset is tiny), or Wire generating from `proto/sl_mini_subset.proto`. Don't add full gRPC libraries.
+- Protobuf: a small hand-written encoder/decoder in `:protocol`, using only the documented subset. No protobuf or gRPC libraries.
 - No Google Play Services dependency, so the app runs on de-Googled phones and can go to F-Droid.
 
 ## Modules
@@ -14,7 +14,7 @@
 :protocol   pure Kotlin/JVM
             ├─ Frames.kt        gRPC-web framing, trailer parsing, header status
             ├─ Wire.kt          varint / length-delimited encode + decode
-            ├─ Requests.kt      builders: getConfig(), getDeviceInfo(), getStatus(), setupBypass(), setupWifi(name, pw)
+            ├─ Requests.kt      builders: wifiGetConfig(), getDeviceInfo(), getStatus(), setupBypass(), setupWifi(name, password)
             ├─ Responses.kt     parsers: WifiConfig subset, DeviceInfo, WifiGetStatus subset, Status
             └─ MiniClient.kt    suspend fun call(req): Result  (takes an HTTP transport interface)
 
@@ -25,6 +25,20 @@
             ├─ data/Profile.kt           saved Wi-Fi name + password (Keystore-encrypted)
             └─ ui/…                      Compose screens
 ```
+
+The protocol client accepts a `Transport` interface; it does not open sockets itself.
+Each suspend method returns `ClientResult.Ok(Response)`, `DeviceError(code, message)`,
+or `TransportError(cause)`. It checks HTTP status, gRPC headers/trailers, embedded
+device status, and the successful response's ID and kind. Malformed protobuf or
+framing raises `ProtocolException` in the parsers and becomes a transport error in
+the client. Cancellation propagates to the caller. Calls are never automatically
+retried, including setup writes.
+
+Unsigned 64-bit IDs, API versions, and uptime use Kotlin `Long` bit patterns.
+Authentication responses expose only the auth kind; password fields are skipped.
+`WifiGetStatusResponse.dhcpServers` preserves field 1019 as opaque length-delimited
+bytes because its contents are not defined in the documented subset. Decoding
+those contents requires further protocol documentation.
 
 ## Reaching the Mini from Android
 
