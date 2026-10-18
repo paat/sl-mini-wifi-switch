@@ -17,7 +17,11 @@ data class MiniDetails(
     val routerAddress: String = "192.168.1.1",
 )
 
-data class MiniSnapshot(val state: MiniState, val details: MiniDetails = MiniDetails())
+data class MiniSnapshot(
+    val state: MiniState,
+    val details: MiniDetails = MiniDetails(),
+    val probeTimedOut: Boolean = false,
+)
 
 /**
  * Read-only probes and state transitions, independent of Android. Call serially for one Mini.
@@ -32,9 +36,24 @@ class MiniStateDetector(private val nowMillis: () -> Long = { System.nanoTime() 
     val rebootTimeRemainingMillis: Long?
         get() = lostAt?.let { (REBOOT_TIMEOUT_MILLIS - (nowMillis() - it)).coerceAtLeast(0L) }
 
-    suspend fun detect(transport: Transport?, routerAddress: String = "192.168.1.1"): MiniSnapshot {
+    /** Intentional release cannot start a restart wait, or erase a wait already in progress. */
+    fun clearHistory() {
+        if (lostAt == null) lastReachableAt = null
+    }
+
+    /** A timeout keeps the original restart deadline and exposes the uncertain probe. */
+    fun probeTimedOut(): MiniSnapshot = unreachable(nowMillis(), lastDetails).copy(probeTimedOut = true)
+
+    /** Skip recording a miss while the owner still has other network candidates to probe. */
+    suspend fun detect(
+        transport: Transport?,
+        routerAddress: String = "192.168.1.1",
+        ipv4Addresses: List<String> = emptyList(),
+        recordMiss: Boolean = true,
+    ): MiniSnapshot {
         val startedAt = nowMillis()
-        if (transport == null) return unreachable(startedAt, MiniDetails(routerAddress = routerAddress))
+        if (transport == null) return if (recordMiss) unreachable(startedAt, MiniDetails(routerAddress = routerAddress))
+            else MiniSnapshot(MiniState.NotFound, MiniDetails(routerAddress = routerAddress))
 
         // An HTTP error or malformed answer still means the router is not silent. Do not
         // misreport Wi-Fi as off merely because config is refused or a schema has changed.
@@ -53,7 +72,7 @@ class MiniStateDetector(private val nowMillis: () -> Long = { System.nanoTime() 
         val details = MiniDetails(info ?: status?.deviceInfo, dishInfo, config, status, routerAddress)
         val state = when {
             config != null -> if (config.setupComplete) MiniState.Configured else MiniState.SetupPending
-            !routerAnswered && dishInfo != null -> MiniState.Bypass
+            !routerAnswered && dishInfo != null && ipv4Addresses.any(::isStarlinkAddress) -> MiniState.Bypass
             else -> null
         }
         if (state != null) {
@@ -62,6 +81,7 @@ class MiniStateDetector(private val nowMillis: () -> Long = { System.nanoTime() 
             lastDetails = details
             return MiniSnapshot(state, details)
         }
+        if (!recordMiss) return MiniSnapshot(MiniState.NotFound, details)
         if (routerAnswered) {
             // We cannot determine setup state without config. Never offer setup based on a guess.
             lastReachableAt = null

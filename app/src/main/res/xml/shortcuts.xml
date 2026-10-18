@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="set_up_mini"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/setup_launch_label"
+        android:shortcutLongLabel="@string/setup_shortcut_long_label">
+        <intent
+            android:action="eu.tsernikov.slminiwifi.action.SET_UP_MINI"
+            android:targetPackage="eu.tsernikov.slminiwifi"
+            android:targetClass="eu.tsernikov.slminiwifi.SetupShortcutActivity" />
+    </shortcut>
+</shortcuts>

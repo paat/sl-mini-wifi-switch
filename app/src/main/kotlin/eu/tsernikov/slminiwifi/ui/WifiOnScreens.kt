@@ -46,11 +46,18 @@ fun WifiOnSetupScreen(
     onContinue: () -> Unit,
     onBack: () -> Unit,
     @StringRes message: Int? = null,
+    onHelp: (() -> Unit)? = null,
+    onReconnect: (() -> Unit)? = null,
+    canConfirm: Boolean = true,
 ) {
     var showPassword by remember { mutableStateOf(false) }
     Screen {
         Heading(stringResource(R.string.wifi_secure))
-        message?.let { Text(stringResource(it)) }
+        SetupConnectionStatus(canConfirm, onReconnect)
+        message?.let {
+            Text(stringResource(it))
+            onHelp?.let { help -> SecondaryButton(R.string.show_reset_steps, help) }
+        }
         // Rules precede both inputs so they are visible before editing starts.
         Text(stringResource(R.string.wifi_on_name_rule, WifiRules.MIN_NAME_BYTES, WifiRules.MAX_NAME_BYTES))
         Text(stringResource(R.string.wifi_on_password_rule, WifiRules.MIN_PASSWORD_LENGTH, WifiRules.MAX_PASSWORD_LENGTH))
@@ -62,6 +69,9 @@ fun WifiOnSetupScreen(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             isError = !WifiRules.isNameValid(profile.name),
+            supportingText = if (!WifiRules.isNameValid(profile.name)) {
+                { Text(stringResource(if (profile.name.isEmpty()) R.string.wifi_on_name_empty else R.string.wifi_on_name_invalid)) }
+            } else null,
         )
         if (!ownPassword) Text(stringResource(R.string.wifi_on_generated_note))
         OutlinedTextField(
@@ -89,7 +99,13 @@ fun WifiOnSetupScreen(
 }
 
 @Composable
-fun WifiOnConfirmScreen(name: String, onConfirm: () -> Unit, onCancel: () -> Unit) {
+fun WifiOnConfirmScreen(
+    name: String,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+    canConfirm: Boolean = true,
+    onReconnect: (() -> Unit)? = null,
+) {
     Screen {
         WifiReadyIcon()
         Heading(stringResource(R.string.wifi_on_confirm_title))
@@ -99,27 +115,30 @@ fun WifiOnConfirmScreen(name: String, onConfirm: () -> Unit, onCancel: () -> Uni
         Text(stringResource(R.string.wifi_on_rejoin))
         ConnectionDialogIllustration(name)
         Text(stringResource(R.string.wifi_on_undo))
-        PrimaryButton(R.string.wifi_on_confirm, onConfirm)
+        SetupConnectionStatus(canConfirm, onReconnect)
+        PrimaryButton(R.string.wifi_on_confirm, onConfirm, canConfirm)
         SecondaryButton(R.string.cancel, onCancel)
     }
 }
 
 @Composable
-fun WifiOnProgressScreen() = SetupProgressScreen(
+fun WifiOnProgressScreen(onReconnect: (() -> Unit)? = null) = SetupProgressScreen(
     R.string.wifi_on_progress_title,
     R.string.wifi_on_progress_body,
     R.string.wifi_on_progress_time,
     R.string.wifi_on_progress_help,
+    onReconnect = onReconnect,
 )
 
 @Composable
 fun WifiOnResultScreen(
     profile: Profile,
     onConnect: () -> Unit,
-    onDetails: () -> Unit,
+    onDetails: (() -> Unit)?,
     onDone: () -> Unit,
     @StringRes connectionMessage: Int? = null,
     verified: Boolean = true,
+    onHelp: (() -> Unit)? = null,
 ) {
     Screen {
         if (verified) WifiReadyIcon() else Image(
@@ -136,8 +155,11 @@ fun WifiOnResultScreen(
         WifiQrCode(profile)
         Text(stringResource(R.string.wifi_on_qr_help))
         PrimaryButton(R.string.wifi_on_connect, onConnect)
-        SecondaryButton(R.string.details, onDetails)
+        onDetails?.let { SecondaryButton(R.string.details, it) }
         SecondaryButton(R.string.done, onDone)
+        if (!verified || connectionMessage != null) {
+            onHelp?.let { SecondaryButton(R.string.show_reset_steps, it) }
+        }
     }
 }
 

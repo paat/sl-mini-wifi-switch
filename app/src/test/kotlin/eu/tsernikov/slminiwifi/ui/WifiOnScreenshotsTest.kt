@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import eu.tsernikov.slminiwifi.data.Profile
+import eu.tsernikov.slminiwifi.state.WifiOffError
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -47,6 +48,10 @@ class WifiOnScreenshotsTest {
     @Test fun confirmDark() = confirm(true)
     @Test fun progressLight() = progress(false)
     @Test fun progressDark() = progress(true)
+    @Test fun reconnectProgressLight() = reconnect(false, false)
+    @Test fun reconnectProgressDark() = reconnect(true, false)
+    @Test fun reconnectErrorLight() = reconnect(false, true)
+    @Test fun reconnectErrorDark() = reconnect(true, true)
     @Test fun resultLight() = result(false)
     @Test fun resultDark() = result(true)
     @Test fun unverifiedResultLight() = result(false, verified = false)
@@ -112,6 +117,21 @@ class WifiOnScreenshotsTest {
         compose.mainClock.advanceTimeBy(400)
         compose.onNodeWithText("Getting your Wi-Fi ready").assertIsDisplayed()
         capture("progress_${suffix(dark)}")
+    }
+
+    private fun reconnect(dark: Boolean, error: Boolean) {
+        var reconnects = 0
+        show(dark) {
+            if (error) WifiOffErrorScreen(WifiOffError.CantReach, {}, animateGuides = false,
+                unreachableBody = eu.tsernikov.slminiwifi.R.string.wifi_on_unreachable_body,
+                onReconnect = { reconnects++ })
+            else WifiOnProgressScreen(onReconnect = { reconnects++ })
+        }
+        compose.onNodeWithText("Try connecting again").performScrollTo().assertIsDisplayed()
+        capture("reconnect_${if (error) "error" else "progress"}_${suffix(dark)}")
+        assertEquals(0, reconnects)
+        compose.onNodeWithText("Try connecting again").performClick()
+        assertEquals(1, reconnects)
     }
 
     private fun result(dark: Boolean, verified: Boolean = true) {

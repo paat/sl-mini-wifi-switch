@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Project-drawn Mini and choice arrow; a launcher, not a Wi-Fi on/off status icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M5,3 L19,3 Q21,3 21,5 L21,13 L19,13 L19,5 L5,5 L5,19 L11,19 L11,21 L5,21 Q3,21 3,19 L3,5 Q3,3 5,3 Z M17,13 L22,18 L17,23 L15.6,21.6 L18.2,19 L12,19 L12,17 L18.2,17 L15.6,14.4 Z" />
+</vector>

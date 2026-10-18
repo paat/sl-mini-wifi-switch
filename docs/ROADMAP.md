@@ -41,12 +41,35 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 
 ## M4: Field use and visual guides
 
-- [ ] Illustrations drawn for the project (vector / animated vector drawables) for every physical step in UX.md: reset symbol location and press, light behaviour, cable and adapter, joining STARLINK, router WAN port
-- [ ] Guided step-by-step flow from the home screen, using those illustrations
-- [ ] Quick Settings tile and app shortcut into the pending-setup action
-- [ ] Offline help screen with the reset steps
-- [ ] Clear progress and timeouts during the 1–2 minute reboots
-- [ ] Field-condition checks: 200% font size, sunlight contrast, TalkBack, 64 dp primary buttons
+- [x] Project-drawn vectors for every physical step: reset symbol/three-second press, blinking-then-off light, cable and adapter, joining STARLINK, Android Connect dialog, router WAN port, restart; described and still when animations are removed
+- [x] Guided step-by-step flow from Home through reset, wait, connection and existing detection, with Back/Next and cable/Wi-Fi alternatives
+- [x] Quick Settings tile and app shortcut into Home detection and the pending-setup choices; API 34+ PendingIntent and safe task reuse
+- [x] Offline reset help from Home and every error presentation, with Back and Check again
+- [x] Shared visible progress with expected times and recovery guidance during reboots; existing bounded verification unchanged
+- [x] Software field-condition checks: scrollable 200% text, WCAG AA body contrast in both themes, labelled illustrations, 64 dp primary buttons and 48 dp touch targets
+- [x] JVM/Compose coverage and light/dark/200% guide/help/wait screenshots in `docs/screenshots/m4/`
+- [ ] Human field checks: TalkBack walkthrough, sunlight/glove readability, reduced motion and illustration accuracy, Quick Settings tile and shortcut on real phones (TESTING.md M4)
+
+## Robustness follow-up (#11, #14, #17)
+
+- [x] Conservative state/write evidence, network fallback and bounded DHCP readiness
+- [x] Retained verification across rotation/backgrounding; fresh reads before returning to Confirm
+- [x] Last-known Details, saved password access from Home, explicit read-only reconnect retry
+- [x] IO profile persistence, plain input rules, regression tests and affected light/dark screenshots
+- [ ] Human lifecycle/reconnect checks below the M2/M3 procedures in TESTING.md
+
+## PR #18 tribunal round 1
+
+- [x] Preserve result credentials through reset help and warm/cold quick entry, including pending permission prompts (T-001, T-003, T-007, T-008)
+- [x] Reset guide scroll on step changes and keep the reset animation released after its three-second hold (T-002, T-004)
+- [x] Keep reboot polling prominent and use a static clock/text wait for reduced motion (T-005, T-006)
+
+## PR #18 tribunal round 2
+
+- [x] Keep setup evidence after profile-save failure so retry can send once (T-001)
+- [x] Consume quick-launch actions so rotation keeps guide and error screens (T-002)
+- [x] Preserve the reboot deadline through probe timeout and lifecycle release (T-003, T-005)
+- [x] Keep the typed form on return and request setup Wi-Fi only after a Reconnect tap (T-004)
 
 ## M5: Release
 

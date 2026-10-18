@@ -48,7 +48,7 @@ The Mini's networks have no internet while the subscription is inactive (and dur
 2. **Setup Wi-Fi:** if the phone is already on `STARLINK`, use that `TRANSPORT_WIFI` network. Otherwise offer to connect with `ConnectivityManager.requestNetwork(NetworkRequest with WifiNetworkSpecifier(ssid = "STARLINK"))`. Android shows its own confirmation dialog; the network stays app-local and doesn't replace the user's Wi-Fi.
 3. Build the OkHttp client with `network.socketFactory` (and a DNS that only resolves literal IPs). Never use `bindProcessToNetwork` for the whole app.
 
-Probe order: Ethernet first (survives the Wi-Fi switching off), then setup Wi-Fi.
+Probe order: each Ethernet candidate first (survives the Wi-Fi switching off), then setup Wi-Fi. A failed cable probe cannot hide an available STARLINK connection. Requested Wi-Fi waits for a DHCP gateway/default route within the request deadline. Home accepts a saved-name Wi-Fi only after its discovered gateway answers with a Starlink router identity; the saved name alone is not evidence. Read-only Home detection requires router silence, a readable dish, and an Ethernet CGNAT address before reporting Wi-Fi off.
 
 ## Main flow
 
@@ -71,13 +71,11 @@ Verification after a write:
 The Wi-Fi-off flow holds the connection that reported setup pending until the explicit
 confirmation tap. It sends once and uses read-only probes for up to 60 seconds,
 including the send time. Ethernet success requires silence at the original router
-address, a readable dish at `192.168.100.1`, and a `100.64.0.0/10` address when IPv4
-addresses are visible. A recreated Ethernet network must use the same cable adapter
+address, a readable dish at `192.168.100.1`, and a `100.64.0.0/10` address. When IPv4 addresses are unavailable, the same router/dish evidence only permits likely success after an acknowledged or transmitted write. A recreated Ethernet network must use the same cable adapter
 interface. Any router HTTP response (even malformed or refused) prevents success.
-Loss of the original setup Wi-Fi is labelled likely success, including when the write
-reply was lost. A device refusal takes precedence over a dropped connection.
-Leaving the foreground or recreating the activity during a write leads to reconnect
-guidance; it never restores or retries the send. Reconnecting only reads the state.
+Loss of setup Wi-Fi is labelled likely success only after an acknowledged write or after the request body was transmitted; a replacement STARLINK handle prevents that inference. A device refusal takes precedence over a dropped connection.
+
+A retained ViewModel owns flow state, the app-local network request, and bounded verification. Rotation and backgrounding preserve an in-flight operation; neither creates another send. Returning to editing or confirmation keeps the form and re-probes existing networks before enabling Confirm. A missing connection offers Reconnect to the Mini; only that tap requests Android’s Connect dialog. Declining it keeps the typed name and password. Intentional network release clears recent reachability only outside an active restart wait. Probe timeout and backgrounding preserve the original restart deadline. Process death never restores a write: interrupted progress opens reconnect guidance, and an unsent confirmation never claims a write failed.
 
 The secure-Wi-Fi flow also pins the connection that reported setup pending. It saves
 one profile encrypted with an Android Keystore AES-256-GCM key before sending a
@@ -91,8 +89,7 @@ authentication on every BSS; masked passwords are never compared. Ethernet recov
 stays on the original adapter. If the setup Wi-Fi disappears, one temporary secured
 `WifiNetworkSpecifier` request joins the chosen name/password for read-only checks.
 Android may ask for Connect; the confirmation and progress screens explain this.
-The bounded verification survives that system dialog covering the activity, but
-activity destruction cancels it and recreation never restores a write.
+The bounded verification survives the system dialog, backgrounding, and activity recreation. A declined or timed-out Connect request exposes a retry button. That button only rejoins and repeats read-only verification. Profile encryption and persistence run on the IO dispatcher before the confirmed write; storage failure prevents sending.
 
 After verification, the temporary request is released and the app explains the next
 system step. Continue opens Android; Back opens the password and offline QR result.
@@ -101,15 +98,40 @@ API 30+ uses `ACTION_WIFI_ADD_NETWORKS` with a WPA2 suggestion; API 29 submits a
 network suggestion and explains Android's approval notification. Saved, already
 present, declined and unavailable results have separate messages. Saving a network
 allows Android to auto-connect; the app does not claim that saving proves a connection.
-Returning to Home can read a manually joined saved-profile Wi-Fi as well as STARLINK.
+Home offers **Show my Wi-Fi password** whenever the encrypted saved profile can be loaded, including after Done, Back, or a fresh launch. It opens the name/password/QR result and Join on this phone without claiming the Mini applied the saved profile. Details keeps the last successful fields and refreshes config/dish fields from verification reads.
 Only the existing local endpoint allowlist is used. If verification is interrupted,
 reconnect guidance can reveal the encrypted saved credentials and QR without claiming
 the Mini applied them. An encryption/storage failure prevents the write entirely.
 
-## Quick-switch extras (later milestones)
+## Quick-switch extras
 
-- Quick Settings tile and home-screen shortcut that open straight into the pending-setup action.
-- A "field card" screen showing the reset steps offline.
+The Quick Settings tile and static launcher shortcut open Home, which uses the
+existing read-only detection before offering the two setup choices. The tile does
+no network work and uses `startActivityAndCollapse(PendingIntent)` on API 34+.
+The shortcut uses a separate, no-history launcher activity: Android clears the
+static shortcut target task, so this activity forwards an explicit intent into the
+existing app task. Warm and cold quick entry return only idle screens to Home. Editing, confirmation,
+pending permission dialogs, progress, saved-password results and phone-save guidance
+keep their current context. Quick entry never interrupts verification or sends another change.
+
+Home's **Start here** guide explains the physical reset, blinking-then-off light,
+wait, and either cable connection or STARLINK plus Android's Connect dialog. Its
+last step returns to existing state detection. Back retraces the selected path;
+the step survives activity recreation without restoring any pending write.
+**Reset help** is an offline card reachable from Home and every error presentation.
+It explains that reset removes the saved Wi-Fi name/password and offers both Back
+and Check again. From a result, both return to that result so credentials remain
+visible. Guide step changes start at the top, including Back and alternate paths.
+Home keeps restart waiting prominent without a Start here reset action while polling.
+Reading the guide/help does not start network work.
+
+All illustrations are project-drawn bundled vectors, animated as separate vector
+layers. The reset press holds for three seconds; the illustrative light sequence
+ends off. Readiness is established by detection, never by an off light alone.
+Android's Remove animations setting is observed while screens are open and shows
+still final poses; waiting uses a static clock and text without a partial progress bar. Shared wait
+presentation supplies the expected time and recovery instruction; existing bounded
+state and setup verification policies remain unchanged.
 
 ## Error handling
 

@@ -25,7 +25,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -64,6 +63,9 @@ fun HomeScreen(
     animateGuides: Boolean = true,
     onPermissions: (() -> Unit)? = null,
     @StringRes permissionsLabel: Int = R.string.open_phone_settings,
+    onGuide: (() -> Unit)? = null,
+    onShowCredentials: (() -> Unit)? = null,
+    onHelp: (() -> Unit)? = null,
 ) {
     Screen {
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelLarge)
@@ -73,14 +75,14 @@ fun HomeScreen(
             MiniState.Configured -> R.string.configured_title
             MiniState.Bypass -> R.string.bypass_title
             MiniState.Rebooting -> R.string.rebooting_title
-            MiniState.NotFound -> R.string.not_found_title
+            MiniState.NotFound -> if (snapshot.probeTimedOut) R.string.check_timed_out_title else R.string.not_found_title
         }
         val body = when (state) {
             MiniState.SetupPending -> R.string.ready_body
             MiniState.Configured -> R.string.configured_body
             MiniState.Bypass -> R.string.bypass_body
             MiniState.Rebooting -> R.string.rebooting_body
-            MiniState.NotFound -> R.string.not_found_body
+            MiniState.NotFound -> if (snapshot.probeTimedOut) R.string.check_timed_out_body else R.string.not_found_body
         }
         val icon = when (state) {
             MiniState.SetupPending -> R.drawable.ic_mini_ready to R.string.ready_icon_description
@@ -96,15 +98,19 @@ fun HomeScreen(
         )
         Heading(stringResource(title))
         Text(stringResource(body))
+        onShowCredentials?.let { SecondaryButton(R.string.wifi_on_home_password, it) }
+        if (state != MiniState.SetupPending && state != MiniState.Rebooting) onGuide?.let { PrimaryButton(R.string.field_start_here, it) }
         message?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
         onPermissions?.let { PrimaryButton(permissionsLabel, it) }
         if (isChecking || isConnecting || state == MiniState.Rebooting) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            if (state == MiniState.Rebooting) RestartIllustration(animateGuides)
+            WaitingProgress(animateGuides)
             Text(stringResource(when {
                 isConnecting -> R.string.connection_waiting
                 state == MiniState.Rebooting -> R.string.rebooting_help
                 else -> R.string.checking
             }))
+            if (isConnecting) Text(stringResource(R.string.field_connect_longer))
             if (isChecking && !isConnecting && state != MiniState.Rebooting) {
                 Text(stringResource(R.string.checking_help))
             }
@@ -113,6 +119,7 @@ fun HomeScreen(
             MiniState.SetupPending -> {
                 PrimaryButton(R.string.wifi_off, { onSetupChoice(true) })
                 PrimaryButton(R.string.wifi_secure, { onSetupChoice(false) })
+                onGuide?.let { SecondaryButton(R.string.field_start_here, it) }
                 SecondaryButton(R.string.details, onDetails)
                 SecondaryButton(R.string.check_again, onRefresh, !isChecking)
             }
@@ -136,6 +143,7 @@ fun HomeScreen(
                 }
             }
         }
+        onHelp?.let { SecondaryButton(R.string.field_reset_help, it) }
         Text(
             stringResource(R.string.read_only_note),
             style = MaterialTheme.typography.bodyMedium,
@@ -158,6 +166,7 @@ fun DetailsScreen(details: MiniDetails, onBack: () -> Unit) {
     Screen {
         SecondaryButton(R.string.back, onBack)
         Heading(stringResource(R.string.details))
+        Text(stringResource(R.string.details_last_readings))
         DeviceDetails(R.string.router_details, details.routerInfo)
         DeviceDetails(R.string.dish_details, details.dishInfo)
         GuideCard {
@@ -280,7 +289,7 @@ internal fun GuideCard(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 internal fun CableIllustration(animate: Boolean) {
     val description = stringResource(R.string.cable_description)
-    val progress = if (animate) {
+    val progress = if (rememberGuideAnimationsEnabled(animate)) {
         val transition = rememberInfiniteTransition(label = "cable insertion")
         val position by transition.animateFloat(
             initialValue = 0f, targetValue = -8f,

@@ -1,0 +1,91 @@
+M4 software verification — 2026-10-18
+
+Command:
+ANDROID_HOME=/home/dev/android-sdk ./gradlew --no-daemon build test
+Command output:
+BUILD SUCCESSFUL in 24s
+103 actionable tasks: 8 executed, 95 up-to-date
+Lint: 0 errors, 20 warnings (not a warning-free build).
+
+JUnit XML counts from the full build before the filtered recording task:
+Class                           Tests  Failures Errors Skipped
+MainActivityRecoveryTest           13         0      0       0
+SetupLaunchTest                     8         0      0       0
+PasswordGeneratorTest               4         0      0       0
+ProfileStoreTest                    8         0      0       0
+WifiQrPayloadTest                   3         0      0       0
+WifiRulesTest                       6         0      0       0
+OkHttpTransportTest                 5         0      0       0
+StarlinkNetworksTest               18         0      0       0
+WifiAutoConnectTest                 9         0      0       0
+MiniStateDetectorTest              20         0      0       0
+WifiOffFlowTest                    19         0      0       0
+WifiOnFlowTest                     17         0      0       0
+FieldAccessibilityTest             22         0      0       0
+FieldGuideScreenshotsTest          42         0      0       0
+ScreenshotsTest                    15         0      0       0
+ThemeContrastTest                   2         0      0       0
+WifiOffScreenshotsTest             21         0      0       0
+WifiOnScreenshotsTest              25         0      0       0
+App total                         257         0      0       0
+
+FramesTest                         12         0      0       0
+MiniClientTest                      9         0      0       0
+RequestsTest                        8         0      0       0
+ResponsesTest                      11         0      0       0
+WireTest                           12         0      0       0
+Protocol total                     52         0      0       0
+
+Combined total                    309         0      0       0
+
+Command:
+ANDROID_HOME=/home/dev/android-sdk ./gradlew --no-daemon :app:recordRoborazziDebug --tests '*FieldGuideScreenshotsTest'
+Command output:
+BUILD SUCCESSFUL in 18s
+32 actionable tasks: 2 executed, 30 up-to-date
+Recording suite: 42 tests, 0 failures, 0 errors, 0 skipped.
+102 PNG files, listed individually in manifest.txt (9,249,664 bytes total).
+
+Requirement evidence:
+1. Bundled project vectors reuse cable, adapter, reset press, router port and Android
+   dialog drawings. The light overlay runs one blinking sequence and ends off; reset press
+   holds three seconds; restart arrow moves. All descriptions are in strings.xml.
+   GuideMotion observes Remove animations; still waits have indeterminate semantics.
+2. Six guide screens cover reset, light/wait, cable, STARLINK, Android Connect,
+   and the final read-only check. MainActivityRecoveryTest covers both paths,
+   Back, recreation and no restored write. Home keeps the two mode buttons primary.
+3. SetupLaunchTest covers tile launch on API 29 and 35, immutable PendingIntent,
+   system binding permission, shortcut metadata, isolated shortcut activity and
+   fresh-intent forwarding. MainActivityRecoveryTest preserves active setup progress.
+4. Offline ResetGuideScreen has Back/Check again and needs no network. All errors,
+   including storage and phone-connection errors, expose help; callbacks are tested.
+5. Home and both setup waits share WaitingProgress/RestartIllustration with expected
+   times and longer-wait instructions. Existing detection/verification tests remain
+   passing; net/ and :protocol sources were unchanged.
+6. FieldAccessibilityTest has 22 cases, including 64 dp primary/48 dp touch sizes,
+   normal/200% text on a 360 dp phone, reachable actions, error help, live motion
+   settings. ThemeContrastTest checks 12 body/label color pairs in each theme at
+   WCAG AA 4.5:1. Guide tests check sizes, scroll reachability and text layout too.
+7. Every guide step, offline help and shared restart wait has light/dark/200% PNGs;
+   Home and error entry points have light/dark PNGs. Screens include scrolled views.
+   Representative reset, light, cable, Wi-Fi list, Android dialog, Home, offline
+   help, error and restart screenshots were opened and visually inspected.
+8. ROADMAP.md M4 software boxes are ticked. Human checks remain explicitly unticked.
+
+Initial runs exposed and corrected a duplicate string, tile test-shadow cleanup,
+Compose semantics reporting paragraph container width as text overflow, and the
+legacy tile API lint check (now narrowly suppressed on the API-guarded method).
+Actual text tests check line bounds, height, max-line truncation and ellipsis using
+native rendering. A final Home visual adjustment made Start here secondary when
+setup is pending; the final build and refreshed screenshots above include it.
+
+No real device was contacted. No new library was added. No push or PR was made.
+Human checks to carry into the PR: docs/TESTING.md, M4 section, steps 1–7:
+- Match illustrations/reset light sequence to the physical Mini; follow both paths.
+- Offline help, Back and read-only readiness detection on a real phone.
+- TalkBack focus, descriptions and wait announcements; live Remove animations.
+- Sunlight/glove readability and 200% font/display settings in both themes.
+- Quick Settings tile and static/pinned shortcut on API 34+ and an older phone;
+  cold start, existing task, and reopening during human-run setup verification.
+These are not established by JVM screenshots/contrast tests. Existing M1–M3 human
+hardware checks also remain outstanding as recorded in ROADMAP.md.

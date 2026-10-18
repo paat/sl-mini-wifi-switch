@@ -42,6 +42,10 @@ class ScreenshotsTest {
     @Test fun setupPendingDark() = home(MiniState.SetupPending, true)
     @Test fun configuredLight() = home(MiniState.Configured, false)
     @Test fun configuredDark() = home(MiniState.Configured, true)
+    @Test fun savedPasswordHomeLight() = savedPasswordHome(false)
+    @Test fun savedPasswordHomeDark() = savedPasswordHome(true)
+    @Test fun timedOutHomeLight() = timedOutHome(false)
+    @Test fun timedOutHomeDark() = timedOutHome(true)
     @Test fun wifiOffLight() = home(MiniState.Bypass, false)
     @Test fun wifiOffDark() = home(MiniState.Bypass, true)
     @Test fun rebootingLight() = home(MiniState.Rebooting, false)
@@ -92,6 +96,30 @@ class ScreenshotsTest {
             assertEquals(1, connects)
             capture("${name}_wifi_guide")
         }
+    }
+
+    private fun timedOutHome(dark: Boolean) {
+        var checks = 0
+        show(dark) {
+            HomeScreen(MiniSnapshot(MiniState.NotFound, probeTimedOut = true),
+                onRefresh = { checks++ }, onConnect = {}, onDetails = {}, onSetupChoice = {}, animateGuides = false)
+        }
+        capture("home_check_timed_out_${theme(dark)}")
+        compose.onNodeWithText("We could not check your Mini").assertIsDisplayed()
+        compose.onNodeWithText("Check again").performScrollTo().performClick()
+        assertEquals(1, checks)
+    }
+
+    private fun savedPasswordHome(dark: Boolean) {
+        var opens = 0
+        show(dark) {
+            HomeScreen(MiniSnapshot(MiniState.Configured, sampleDetails), onRefresh = {}, onConnect = {},
+                onDetails = {}, onSetupChoice = {}, animateGuides = false, onGuide = {},
+                onShowCredentials = { opens++ })
+        }
+        capture("home_saved_password_${theme(dark)}")
+        compose.onNodeWithText("Show my Wi-Fi password").assertIsDisplayed().performClick()
+        assertEquals(1, opens)
     }
 
     private fun details(dark: Boolean) {

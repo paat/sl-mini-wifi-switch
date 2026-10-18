@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +38,8 @@ fun WifiOffConfirmScreen(
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
     animateGuides: Boolean = true,
+    canConfirm: Boolean = true,
+    onReconnect: (() -> Unit)? = null,
 ) {
     Screen {
         Heading(stringResource(R.string.wifi_off_confirm_title))
@@ -45,8 +47,20 @@ fun WifiOffConfirmScreen(
         RouterIllustration(animateGuides)
         Text(stringResource(R.string.wifi_off_undo))
         if (isWifi) Text(stringResource(R.string.wifi_off_disconnect_warning))
-        PrimaryButton(R.string.wifi_off_confirm, onConfirm)
+        SetupConnectionStatus(canConfirm, onReconnect, animateGuides)
+        PrimaryButton(R.string.wifi_off_confirm, onConfirm, canConfirm)
         SecondaryButton(R.string.cancel, onCancel)
+    }
+}
+
+/** The same connection check and explicit recovery action keep each unsent choice in place. */
+@Composable
+internal fun SetupConnectionStatus(canConfirm: Boolean, onReconnect: (() -> Unit)?, animateGuides: Boolean = true) {
+    if (onReconnect != null) {
+        PrimaryButton(R.string.setup_reconnect, onReconnect)
+    } else if (!canConfirm) {
+        WaitingProgress(animateGuides)
+        Text(stringResource(R.string.confirm_checking))
     }
 }
 
@@ -65,6 +79,8 @@ internal fun SetupProgressScreen(
     @StringRes body: Int,
     @StringRes time: Int,
     @StringRes help: Int,
+    animateGuides: Boolean = true,
+    onReconnect: (() -> Unit)? = null,
 ) {
     Screen {
         Image(
@@ -73,16 +89,21 @@ internal fun SetupProgressScreen(
         )
         Heading(stringResource(title))
         Text(stringResource(body))
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        RestartIllustration(animateGuides)
+        WaitingProgress(animateGuides)
         Text(stringResource(time))
         Text(stringResource(help))
+        onReconnect?.let {
+            Text(stringResource(R.string.wifi_on_reconnect_body))
+            PrimaryButton(R.string.wifi_on_reconnect, it)
+        }
     }
 }
 
 @Composable
 fun WifiOffResultScreen(
     likely: Boolean,
-    onDetails: () -> Unit,
+    onDetails: (() -> Unit)?,
     onDone: () -> Unit,
     animateGuides: Boolean = true,
 ) {
@@ -91,14 +112,14 @@ fun WifiOffResultScreen(
             painterResource(R.drawable.ic_wifi_off), stringResource(R.string.bypass_icon_description),
             Modifier.size(56.dp), colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
         )
-        Heading(stringResource(R.string.wifi_off_result_title))
+        Heading(stringResource(if (likely) R.string.wifi_off_likely_title else R.string.wifi_off_result_title))
         if (likely) Text(stringResource(R.string.wifi_off_likely))
         Text(stringResource(R.string.wifi_off_router_instruction))
         RouterIllustration(animateGuides)
         Text(stringResource(R.string.wifi_off_port_help))
         Text(stringResource(R.string.wifi_off_undo))
         PrimaryButton(R.string.done, onDone)
-        SecondaryButton(R.string.details, onDetails)
+        onDetails?.let { SecondaryButton(R.string.details, it) }
     }
 }
 
@@ -109,6 +130,8 @@ fun WifiOffErrorScreen(
     animateGuides: Boolean = true,
     @StringRes unreachableBody: Int = R.string.wifi_off_unreachable_body,
     onShowCredentials: (() -> Unit)? = null,
+    onReconnect: (() -> Unit)? = null,
+    onHelp: (() -> Unit)? = null,
 ) {
     val title = when (error) {
         WifiOffError.AlreadySetUp -> R.string.wifi_off_already_title
@@ -134,23 +157,33 @@ fun WifiOffErrorScreen(
             if (error == WifiOffError.AlreadySetUp) R.string.show_reset_steps else R.string.reconnect_to_mini,
             onNext,
         )
+        onReconnect?.let {
+            Text(stringResource(R.string.wifi_on_reconnect_body))
+            PrimaryButton(R.string.wifi_on_reconnect, it)
+        }
         onShowCredentials?.let { SecondaryButton(R.string.wifi_on_show_credentials, it) }
+        onHelp?.let { SecondaryButton(R.string.field_reset_help, it) }
     }
 }
 
+/** All text and drawings are bundled; this card needs no connection. */
 @Composable
-fun ResetGuideScreen(onDone: () -> Unit, animateGuides: Boolean = true) {
+fun ResetGuideScreen(
+    onDone: () -> Unit,
+    animateGuides: Boolean = true,
+    onBack: () -> Unit = onDone,
+) {
     Screen {
+        SecondaryButton(R.string.back, onBack)
         Heading(stringResource(R.string.reset_title))
+        Text(stringResource(R.string.field_offline_note))
+        Text(stringResource(R.string.field_reset_warning))
         Text(stringResource(R.string.reset_press))
         ResetIllustration(animateGuides)
         Text(stringResource(R.string.reset_light))
-        Image(
-            painterResource(R.drawable.guide_reset_light), stringResource(R.string.reset_light_description),
-            Modifier.fillMaxWidth().height(100.dp),
-            colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurface),
-        )
+        ResetLightIllustration(animateGuides)
         Text(stringResource(R.string.reset_wait))
+        RestartIllustration(animateGuides)
         Text(stringResource(R.string.reset_ready))
         PrimaryButton(R.string.check_again, onDone)
     }
@@ -158,7 +191,7 @@ fun ResetGuideScreen(onDone: () -> Unit, animateGuides: Boolean = true) {
 
 /** Original vectors. The plug moves into the labelled port; labels scale with system text. */
 @Composable
-private fun RouterIllustration(animate: Boolean) {
+internal fun RouterIllustration(animate: Boolean) {
     val description = stringResource(R.string.wifi_off_router_description)
     val position = insertionPosition(animate)
     Column(
@@ -190,9 +223,9 @@ private fun RouterIllustration(animate: Boolean) {
 }
 
 @Composable
-private fun ResetIllustration(animate: Boolean) {
+internal fun ResetIllustration(animate: Boolean) {
     val description = stringResource(R.string.reset_press_description)
-    val position = insertionPosition(animate)
+    val position = insertionPosition(animate, press = true)
     Box(Modifier.fillMaxWidth().height(144.dp).clearAndSetSemantics { contentDescription = description }) {
         Image(
             painterResource(R.drawable.guide_reset), contentDescription = null,
@@ -208,13 +241,24 @@ private fun ResetIllustration(animate: Boolean) {
 }
 
 @Composable
-private fun insertionPosition(animate: Boolean): Float {
-    if (!animate) return 0f
+private fun insertionPosition(animate: Boolean, press: Boolean = false): Float {
+    if (!rememberGuideAnimationsEnabled(animate)) return 0f
     val transition = rememberInfiniteTransition(label = "plug or press")
     val position by transition.animateFloat(
-        initialValue = 8f, targetValue = 0f,
-        animationSpec = infiniteRepeatable(tween(1400), RepeatMode.Reverse),
+        initialValue = 8f, targetValue = if (press) 8f else 0f,
+        animationSpec = if (press) infiniteRepeatable(resetPressKeyframes, RepeatMode.Restart)
+            else infiniteRepeatable(tween(1400), RepeatMode.Reverse),
         label = "insertion position",
     )
     return position
+}
+
+/** Press, hold for three seconds, release, then pause fully released before repeating. */
+internal val resetPressKeyframes = keyframes<Float> {
+    durationMillis = 4500
+    8f at 0
+    0f at 500
+    0f at 3500
+    8f at 4000
+    8f at 4500
 }

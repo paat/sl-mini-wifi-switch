@@ -36,11 +36,18 @@ Record the phone screenshots with Robolectric and Roborazzi (JVM; no emulator or
 ```
 
 The task writes committed PNGs to [`docs/screenshots/m1/`](docs/screenshots/m1/),
-[`docs/screenshots/m2/`](docs/screenshots/m2/), and [`docs/screenshots/m3/`](docs/screenshots/m3/).
+[`docs/screenshots/m2/`](docs/screenshots/m2/), [`docs/screenshots/m3/`](docs/screenshots/m3/),
+and [`docs/screenshots/m4/`](docs/screenshots/m4/).
 M3 includes generated/own-password setup with and without a saved profile, 200% setup
 fonts, confirmation, progress, password/QR results and Android connection explanations
 in light and dark themes. Long screens include scrolled views. See the
 [M3 PNG list](docs/screenshots/m3/manifest.txt) and [test counts](docs/screenshots/m3/verification.txt).
+M4 adds the reset/light/cable/Wi-Fi/Android/choice guide, offline reset help, shared
+restart waits, and Home/error entry points. Each guide step and the offline help
+have light/dark and 200% views, including scrolled illustrations and actions. See
+the [M4 PNG list](docs/screenshots/m4/manifest.txt) and
+[test counts and human checks](docs/screenshots/m4/verification.txt).
+Record only M4 with `:app:recordRoborazziDebug --tests '*FieldGuideScreenshotsTest'`.
 Normal `build test` runs render and action assertions without recording or comparing
 pixels, so CI font differences do not fail the suite. App unit tests run on the JVM; screenshot tests use a debug-only Compose host.
 

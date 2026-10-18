@@ -55,8 +55,11 @@ class MiniStateDetectorTest {
         }
     }
 
-    private fun detect(transport: Transport? = fake, routerAddress: String = "192.168.1.1") =
-        runCall { detector.detect(transport, routerAddress) }
+    private fun detect(
+        transport: Transport? = fake,
+        routerAddress: String = "192.168.1.1",
+        ipv4Addresses: List<String> = listOf("100.64.0.1"),
+    ) = runCall { detector.detect(transport, routerAddress, ipv4Addresses) }
 
     @Test fun setupPendingIncludesVersionsBandsAddressesAndAuthentication() {
         val result = detect()
@@ -83,13 +86,77 @@ class MiniStateDetectorTest {
         assertEquals(MiniState.Configured, detect().state)
     }
 
-    @Test fun silentRouterAndReachableDishMeansBypass() {
+    @Test fun silentRouterReachableDishAndCgnatLeaseMeanBypass() {
         fake.routerUp = false
         val result = detect()
         assertEquals(MiniState.Bypass, result.state)
         assertNull(result.details.routerInfo)
         assertNotNull(result.details.dishInfo)
         assertEquals(2, fake.calls.size)
+    }
+
+    @Test fun reachableDishAndOneRouterFailureCannotClaimWifiOff() {
+        fake.routerUp = false
+        for (addresses in listOf(emptyList(), listOf("192.168.1.2"), listOf("100.63.255.255"), listOf("100.128.0.1"))) {
+            assertEquals(MiniState.NotFound, detect(ipv4Addresses = addresses).state)
+        }
+    }
+
+    @Test fun repeatedRouterFailuresWithoutCgnatStillDoNotProveWifiOff() {
+        detect(ipv4Addresses = listOf("192.168.1.2"))
+        fake.routerUp = false
+        repeat(3) {
+            now += 3_000
+            assertEquals(MiniState.Rebooting, detect(ipv4Addresses = listOf("192.168.1.2")).state)
+        }
+    }
+
+    @Test fun intentionalNetworkReleaseClearsRestartHistory() {
+        detect()
+        detector.clearHistory()
+        now += 1_000
+        assertEquals(MiniState.NotFound, detect(null).state)
+        assertNull(detector.rebootTimeRemainingMillis)
+    }
+
+    @Test fun probeTimeoutAndReleasePreserveTheOriginalRestartDeadline() {
+        val initial = detect()
+        now = 3_000
+        assertEquals(MiniState.Rebooting, detect(null).state)
+        now = 30_000
+        val timeout = detector.probeTimedOut()
+        assertEquals(MiniState.Rebooting, timeout.state)
+        assertTrue(timeout.probeTimedOut)
+        assertEquals(initial.details, timeout.details)
+        assertEquals(153_000L, detector.rebootTimeRemainingMillis)
+        detector.clearHistory()
+        assertEquals(153_000L, detector.rebootTimeRemainingMillis)
+        now = 182_999
+        assertEquals(MiniState.Rebooting, detector.probeTimedOut().state)
+        now = 183_000
+        assertEquals(MiniState.NotFound, detector.probeTimedOut().state)
+        assertNull(detector.rebootTimeRemainingMillis)
+    }
+
+    @Test fun timedOutProbeRetainsDetailsAndMarksUncertaintyWithoutRecordingAbsence() {
+        val initial = detect()
+        now += 3_000
+        detect(null)
+        now += MiniStateDetector.REBOOT_TIMEOUT_MILLIS
+        val result = detector.probeTimedOut()
+        assertEquals(MiniState.NotFound, result.state)
+        assertTrue(result.probeTimedOut)
+        assertEquals(initial.details, result.details)
+        assertNull(detector.rebootTimeRemainingMillis)
+        assertFalse(detect(null).probeTimedOut)
+    }
+
+    @Test fun failedEarlyCandidateDoesNotEraseRestartHistory() {
+        detect()
+        now += 3_000
+        fake.configReply = HttpResponse(503, emptyMap(), byteArrayOf())
+        assertEquals(MiniState.NotFound, runCall { detector.detect(fake, recordMiss = false) }.state)
+        assertEquals(MiniState.Rebooting, detect(null).state)
     }
 
     @Test fun initiallySilentDevicesMeanNotFound() {
@@ -108,10 +175,10 @@ class MiniStateDetectorTest {
         for (from in reachable) for (to in reachable) {
             val subject = MiniStateDetector { now }
             setState(from)
-            assertEquals(from, runCall { subject.detect(fake) }.state)
+            assertEquals(from, runCall { subject.detect(fake, ipv4Addresses = listOf("100.64.0.1")) }.state)
             setState(to)
             now += 3_000
-            assertEquals("$from → $to", to, runCall { subject.detect(fake) }.state)
+            assertEquals("$from → $to", to, runCall { subject.detect(fake, ipv4Addresses = listOf("100.64.0.1")) }.state)
         }
     }
 
@@ -120,17 +187,17 @@ class MiniStateDetectorTest {
         for (from in reachable) for (to in reachable) {
             val subject = MiniStateDetector { now }
             setState(from)
-            val initial = runCall { subject.detect(fake) }
+            val initial = runCall { subject.detect(fake, ipv4Addresses = listOf("100.64.0.1")) }
             now += 3_000
             fake.routerUp = false
             fake.dishUp = false
-            val lost = runCall { subject.detect(fake) }
+            val lost = runCall { subject.detect(fake, ipv4Addresses = listOf("100.64.0.1")) }
             assertEquals("$from → Rebooting", MiniState.Rebooting, lost.state)
             assertEquals(initial.details, lost.details)
             now += 30_000
             assertEquals(MiniState.Rebooting, runCall { subject.detect(null) }.state)
             setState(to)
-            assertEquals("Rebooting → $to", to, runCall { subject.detect(fake) }.state)
+            assertEquals("Rebooting → $to", to, runCall { subject.detect(fake, ipv4Addresses = listOf("100.64.0.1")) }.state)
         }
     }
 
@@ -170,7 +237,7 @@ class MiniStateDetectorTest {
             val subject = MiniStateDetector { now }
             assertEquals(MiniState.NotFound, runCall { subject.detect(null) }.state)
             setState(target)
-            assertEquals(target, runCall { subject.detect(fake) }.state)
+            assertEquals(target, runCall { subject.detect(fake, ipv4Addresses = listOf("100.64.0.1")) }.state)
         }
     }
 
