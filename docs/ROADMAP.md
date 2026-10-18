@@ -30,11 +30,14 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Hardware-test `network_password` (FINDINGS.md test 10: works, WPA2/WPA3)
 - [x] Hardware-test a client joining with the scripted password (FINDINGS.md test 11)
 - [ ] Hardware-test password limits (min/max length, special characters)
-- [ ] Profile storage with Keystore-backed encryption; "Use the same Wi-Fi as last time"
-- [ ] Generated password by default, show/hide toggle, own-password option
-- [ ] Send `wifi_setup{network_name, network_password}`, verify `setup_complete` and auth type
-- [ ] Input validation matching what the device accepts, rules shown before typing
-- [ ] Result screen with the password in large type and a Wi-Fi QR code
+- [x] Profile storage with Keystore-backed encryption; "Use the same Wi-Fi as last time"
+- [x] Generated password by default, show/hide toggle, own-password option
+- [x] Send `wifi_setup{network_name, network_password}`, verify `setup_complete` and auth type
+- [x] Provisional input validation (name 1–32 UTF-8 bytes; password 8–63 printable ASCII), rules shown before typing; device limits remain a hardware test
+- [x] Result screen with the password in large type and a Wi-Fi QR code
+- [x] Save new Wi-Fi through Android (API 30+ Save dialog; API 29 suggestion notification), with plain explanations and QR fallback
+- [x] JVM tests and light/dark/200% setup Roborazzi screenshots in `docs/screenshots/m3/`
+- [ ] Human app test over Ethernet and setup Wi-Fi, including auto-connect on API 30+ and API 29 if available
 
 ## M4: Field use and visual guides
 

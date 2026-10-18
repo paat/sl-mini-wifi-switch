@@ -19,7 +19,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 
 data class StarlinkConnection(val network: Network, val routerAddress: String)
 
-/** Owns only this app's STARLINK request. It never changes the process's default network. */
+/** Owns only this app's temporary Wi-Fi request. Never changes the process's default network. */
 class StarlinkNetworks(context: Context) : Closeable {
     private val connectivity = context.getSystemService(ConnectivityManager::class.java)
     private val wifi = context.applicationContext.getSystemService(WifiManager::class.java)
@@ -66,10 +66,18 @@ class StarlinkNetworks(context: Context) : Closeable {
         val starlink = networks.firstOrNull { network ->
             val capabilities = connectivity.getNetworkCapabilities(network)
             capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true &&
-                isStarlink(network, capabilities)
+                isNamedWifi(network, capabilities, "STARLINK")
         }
         return starlink?.let(::connection)
     }
+
+    /** Recovery can read the one saved profile after the user joined it in Android settings. */
+    @SuppressLint("MissingPermission")
+    fun findWifi(name: String): StarlinkConnection? = connectivity.allNetworks.firstOrNull { network ->
+        val capabilities = connectivity.getNetworkCapabilities(network)
+        capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true &&
+            isNamedWifi(network, capabilities, name)
+    }?.let(::connection)
 
     private fun usableEthernet(network: Network): Boolean {
         val properties = connectivity.getLinkProperties(network) ?: return false
@@ -92,13 +100,13 @@ class StarlinkNetworks(context: Context) : Closeable {
 
     @Suppress("DEPRECATION")
     @SuppressLint("MissingPermission")
-    private fun isStarlink(network: Network, capabilities: NetworkCapabilities): Boolean {
+    private fun isNamedWifi(network: Network, capabilities: NetworkCapabilities, name: String): Boolean {
         val info = capabilities.transportInfo as? WifiInfo
-        if (info?.ssid?.removeSurrounding("\"") == "STARLINK") return true
+        if (info?.ssid?.removeSurrounding("\"") == name) return true
         // getNetworkCapabilities may redact SSID even after permission is granted. The legacy
         // primary Wi-Fi info remains available; match its IP to avoid selecting another Wi-Fi link.
         val primary = wifi.connectionInfo ?: return false
-        if (primary.ssid.removeSurrounding("\"") != "STARLINK" || primary.ipAddress == 0) return false
+        if (primary.ssid.removeSurrounding("\"") != name || primary.ipAddress == 0) return false
         val address = ByteArray(4) { index -> (primary.ipAddress ushr (index * 8)).toByte() }
         return connectivity.getLinkProperties(network)?.linkAddresses.orEmpty()
             .any { it.address.address.contentEquals(address) }
@@ -116,8 +124,16 @@ class StarlinkNetworks(context: Context) : Closeable {
     }
 
     /** Invoke only after the user's Connect tap. Android supplies the connection confirmation. */
+    suspend fun requestStarlink(): StarlinkConnection? = requestWifi("STARLINK", null, 60_000)
+
+    /** Reconnect after the confirmed setup write, to verify over the newly secured Wi-Fi. */
+    suspend fun requestSecureWifi(name: String, password: String): StarlinkConnection? {
+        require(password.isNotEmpty()) { "A password is required" }
+        return requestWifi(name, password, 120_000)
+    }
+
     @SuppressLint("MissingPermission")
-    suspend fun requestStarlink(): StarlinkConnection? {
+    private suspend fun requestWifi(name: String, password: String?, timeoutMillis: Int): StarlinkConnection? {
         releaseRequest()
         return suspendCancellableCoroutine { continuation ->
             val callback = object : ConnectivityManager.NetworkCallback() {
@@ -156,13 +172,15 @@ class StarlinkNetworks(context: Context) : Closeable {
             val request = NetworkRequest.Builder()
                 .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
                 .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .setNetworkSpecifier(WifiNetworkSpecifier.Builder().setSsid("STARLINK").build())
+                .setNetworkSpecifier(WifiNetworkSpecifier.Builder().setSsid(name).apply {
+                    if (password != null) setWpa2Passphrase(password)
+                }.build())
                 .build()
             synchronized(lock) {
                 requestCallback = callback
                 pendingRequest = continuation
                 try {
-                    connectivity.requestNetwork(request, callback, 60_000)
+                    connectivity.requestNetwork(request, callback, timeoutMillis)
                 } catch (failure: RuntimeException) {
                     requestCallback = null
                     pendingRequest = null

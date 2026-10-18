@@ -1,0 +1,49 @@
+M3 software verification — 2026-10-18
+
+Command:
+ANDROID_HOME=/home/dev/android-sdk ./gradlew --no-daemon build test
+Result: BUILD SUCCESSFUL in 31s
+103 actionable tasks: 42 executed, 61 up-to-date
+Lint completed: 0 errors, 18 warnings (not a warning-free build).
+
+JUnit XML counts from the full build before the filtered recording task:
+Class                           Tests  Failures Errors Skipped
+MainActivityRecoveryTest             8         0      0       0
+PasswordGeneratorTest                4         0      0       0
+ProfileStoreTest                     8         0      0       0
+WifiQrPayloadTest                    3         0      0       0
+WifiRulesTest                        6         0      0       0
+OkHttpTransportTest                  5         0      0       0
+StarlinkNetworksTest                18         0      0       0
+WifiAutoConnectTest                  9         0      0       0
+MiniStateDetectorTest               20         0      0       0
+WifiOffFlowTest                     19         0      0       0
+WifiOnFlowTest                      17         0      0       0
+ScreenshotsTest                     15         0      0       0
+WifiOffScreenshotsTest              21         0      0       0
+WifiOnScreenshotsTest               25         0      0       0
+App total                         178         0      0       0
+
+FramesTest                         12         0      0       0
+MiniClientTest                      9         0      0       0
+RequestsTest                        8         0      0       0
+ResponsesTest                      11         0      0       0
+WireTest                           12         0      0       0
+Protocol total                     52         0      0       0
+Combined total                    230         0      0       0
+
+Command:
+ANDROID_HOME=/home/dev/android-sdk ./gradlew --no-daemon :app:recordRoborazziDebug --tests '*WifiOnScreenshotsTest'
+Result: BUILD SUCCESSFUL in 17s
+32 actionable tasks: 2 executed, 30 up-to-date
+Recording suite: 25 tests, 0 failures, 0 errors, 0 skipped.
+58 PNG files, listed individually in manifest.txt (5,483,946 bytes total).
+Fictional credentials only. Representative setup, 200% font, confirmation,
+progress, QR results and connection explanations were visually inspected.
+
+The first build was stopped after downloading the previously uncached API 29
+Robolectric image, before the ten-minute waiting limit; source changes had made
+that pass stale. The final build and recording above completed successfully.
+No real device was contacted. Android Keystore on-device behavior, password limits,
+setup over both physical connections, and actual automatic joining remain human
+checks in docs/TESTING.md, section “M3 app: Name + password and auto-connect”.

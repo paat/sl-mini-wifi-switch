@@ -79,9 +79,35 @@ reply was lost. A device refusal takes precedence over a dropped connection.
 Leaving the foreground or recreating the activity during a write leads to reconnect
 guidance; it never restores or retries the send. Reconnecting only reads the state.
 
+The secure-Wi-Fi flow also pins the connection that reported setup pending. It saves
+one profile encrypted with an Android Keystore AES-256-GCM key before sending a
+single confirmed write. Names use 1–32 UTF-8 bytes and passwords use 8–63 printable
+ASCII characters; these provisional limits still require hardware testing. Neither
+activity saved state nor diagnostic strings contain credentials.
+
+Verification reads `wifi_get_config` every 3 seconds for up to 3 minutes, including
+the write time. It requires `setup_complete`, at least one BSS, and known secure
+authentication on every BSS; masked passwords are never compared. Ethernet recovery
+stays on the original adapter. If the setup Wi-Fi disappears, one temporary secured
+`WifiNetworkSpecifier` request joins the chosen name/password for read-only checks.
+Android may ask for Connect; the confirmation and progress screens explain this.
+The bounded verification survives that system dialog covering the activity, but
+activity destruction cancels it and recreation never restores a write.
+
+After verification, the temporary request is released and the app explains the next
+system step. Continue opens Android; Back opens the password and offline QR result.
+The result also offers Join on this phone to repeat the phone-only save step. Then
+API 30+ uses `ACTION_WIFI_ADD_NETWORKS` with a WPA2 suggestion; API 29 submits a
+network suggestion and explains Android's approval notification. Saved, already
+present, declined and unavailable results have separate messages. Saving a network
+allows Android to auto-connect; the app does not claim that saving proves a connection.
+Returning to Home can read a manually joined saved-profile Wi-Fi as well as STARLINK.
+Only the existing local endpoint allowlist is used. If verification is interrupted,
+reconnect guidance can reveal the encrypted saved credentials and QR without claiming
+the Mini applied them. An encryption/storage failure prevents the write entirely.
+
 ## Quick-switch extras (later milestones)
 
-- One saved profile (name + password) so secure Wi-Fi setup is one tap after a reset.
 - Quick Settings tile and home-screen shortcut that open straight into the pending-setup action.
 - A "field card" screen showing the reset steps offline.
 

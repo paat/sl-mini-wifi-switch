@@ -1,5 +1,6 @@
 package eu.tsernikov.slminiwifi.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -50,17 +51,31 @@ fun WifiOffConfirmScreen(
 }
 
 @Composable
-fun WifiOffProgressScreen() {
+fun WifiOffProgressScreen() = SetupProgressScreen(
+    R.string.wifi_off_progress_title,
+    R.string.wifi_off_progress_body,
+    R.string.wifi_off_progress_time,
+    R.string.wifi_off_progress_help,
+)
+
+/** Shared waiting presentation for both explicitly confirmed setup choices. */
+@Composable
+internal fun SetupProgressScreen(
+    @StringRes title: Int,
+    @StringRes body: Int,
+    @StringRes time: Int,
+    @StringRes help: Int,
+) {
     Screen {
         Image(
             painterResource(R.drawable.ic_waiting), stringResource(R.string.rebooting_icon_description),
             Modifier.size(56.dp), colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
         )
-        Heading(stringResource(R.string.wifi_off_progress_title))
-        Text(stringResource(R.string.wifi_off_progress_body))
+        Heading(stringResource(title))
+        Text(stringResource(body))
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-        Text(stringResource(R.string.wifi_off_progress_time))
-        Text(stringResource(R.string.wifi_off_progress_help))
+        Text(stringResource(time))
+        Text(stringResource(help))
     }
 }
 
@@ -88,7 +103,13 @@ fun WifiOffResultScreen(
 }
 
 @Composable
-fun WifiOffErrorScreen(error: WifiOffError, onNext: () -> Unit, animateGuides: Boolean = true) {
+fun WifiOffErrorScreen(
+    error: WifiOffError,
+    onNext: () -> Unit,
+    animateGuides: Boolean = true,
+    @StringRes unreachableBody: Int = R.string.wifi_off_unreachable_body,
+    onShowCredentials: (() -> Unit)? = null,
+) {
     val title = when (error) {
         WifiOffError.AlreadySetUp -> R.string.wifi_off_already_title
         WifiOffError.Refused -> R.string.wifi_off_refused_title
@@ -97,7 +118,7 @@ fun WifiOffErrorScreen(error: WifiOffError, onNext: () -> Unit, animateGuides: B
     val body = when (error) {
         WifiOffError.AlreadySetUp -> R.string.wifi_off_already_body
         WifiOffError.Refused -> R.string.wifi_off_refused_body
-        WifiOffError.CantReach -> R.string.wifi_off_unreachable_body
+        WifiOffError.CantReach -> unreachableBody
     }
     Screen {
         Image(
@@ -113,6 +134,7 @@ fun WifiOffErrorScreen(error: WifiOffError, onNext: () -> Unit, animateGuides: B
             if (error == WifiOffError.AlreadySetUp) R.string.show_reset_steps else R.string.reconnect_to_mini,
             onNext,
         )
+        onShowCredentials?.let { SecondaryButton(R.string.wifi_on_show_credentials, it) }
     }
 }
 

@@ -15,8 +15,10 @@ target-sdk = "37"
 jvm = "21"
 app-code = "1"
 app-name = "0.1.0"
+zxing = "3.5.3"
 
 [libraries]
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
 compose-ui = { module = "androidx.compose.ui:ui" }
 compose-foundation = { module = "androidx.compose.foundation:foundation" }

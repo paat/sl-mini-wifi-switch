@@ -310,8 +310,9 @@ private fun GuideImage(@DrawableRes drawable: Int, modifier: Modifier = Modifier
 
 /** A drawn example, with translated text; no image from Android or Starlink is used. */
 @Composable
-private fun ConnectionDialogIllustration() {
-    val description = stringResource(R.string.wifi_description)
+internal fun ConnectionDialogIllustration(networkName: String? = null) {
+    val description = if (networkName == null) stringResource(R.string.wifi_description)
+        else stringResource(R.string.wifi_on_connect_description, networkName)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Surface(
             modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = description },
@@ -326,7 +327,7 @@ private fun ConnectionDialogIllustration() {
                     colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
                 )
                 Text(stringResource(R.string.wifi_dialog_title), style = MaterialTheme.typography.titleMedium)
-                Text(stringResource(R.string.starlink_network))
+                Text(networkName ?: stringResource(R.string.starlink_network))
                 // Illustration only, not a second interactive Connect action.
                 Text(
                     stringResource(R.string.connect), modifier = Modifier.align(Alignment.End),
