@@ -7,7 +7,7 @@ An open-source Android app that switches a **Starlink Mini** between two field m
 | **Wi-Fi off** (bypass) | Built-in Wi-Fi and router are off. The Ethernet port hands one wired device an internet address straight from Starlink. | Semi-permanent spot where you want a small RF footprint. |
 | **Secure Wi-Fi** | Built-in router on, Wi-Fi with your own name and password. | Quick stop: power bank in, phone or laptop on Wi-Fi, pack up. |
 
-> **Status: pre-alpha, placeholder app.** Bypass, Wi-Fi name and Wi-Fi password setup have each been verified by hand on one Starlink Mini (see [docs/FINDINGS.md](docs/FINDINGS.md)). The Gradle project builds a placeholder screen; setup and status features are not implemented yet. [AGENTS.md](AGENTS.md) explains how a coding agent should take it from here.
+> **Status: pre-alpha, read-only app (M1).** The app finds the Mini over Ethernet or STARLINK Wi-Fi, shows its state and device details, and never sends a write. The two setup choices show a next-version preview. Setup writes have been verified separately by a human (see [docs/FINDINGS.md](docs/FINDINGS.md)); app hardware checks remain pending.
 
 ## Build
 
@@ -18,6 +18,27 @@ an untracked `local.properties` file. The wrapper downloads Gradle automatically
 ```bash
 ./gradlew --no-daemon clean build test
 ```
+
+Record the phone screenshots with Robolectric and Roborazzi (JVM; no emulator or KVM):
+
+```bash
+./gradlew --no-daemon :app:recordRoborazziDebug --tests '*ScreenshotsTest'
+```
+
+The task writes committed PNGs to [`docs/screenshots/m1/`](docs/screenshots/m1/):
+all five Home states, Details, and both setup previews in light and dark themes,
+plus a 200% font-size case. Long connection/Details screens include scrolled views.
+Normal `build test` runs render and action assertions without recording or comparing
+pixels, so CI font differences do not fail the suite. App unit tests run on the JVM; screenshot tests use a debug-only Compose host.
+
+The app uses sockets on the selected network, with no process-wide binding,
+DNS lookups, redirects, proxies, analytics, or remote services. It reads only
+`wifi_get_config`, `get_device_info`, and router `get_status`. Android may ask
+for permission to connect to local devices (Android 17+), nearby Wi-Fi devices
+(Android 13+), or location to identify the existing STARLINK network. Location
+services may need to be enabled for Wi-Fi identification on the phone; no
+physical location is collected. Permission denial has a phone-settings recovery
+button, and app-local Wi-Fi requests are released when the app leaves the foreground.
 
 The `:protocol` module is pure Kotlin/JVM; `:app` is the Android Compose app.
 Dependency, plugin, and SDK versions live in `gradle/libs.versions.toml`; the

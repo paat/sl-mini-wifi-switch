@@ -1,0 +1,6 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="320dp" android:height="150dp" android:viewportWidth="320" android:viewportHeight="150">
+    <!-- Landscape phone at left, with USB-C on its short right edge; Mini and its cable port at right. Original project artwork. -->
+    <path android:fillColor="#00000000" android:strokeColor="#FF000000" android:strokeWidth="3" android:strokeLineJoin="round" android:pathData="M15,66 L77,66 Q83,66 83,72 L83,108 Q83,114 77,114 L15,114 Q9,114 9,108 L9,72 Q9,66 15,66 Z M16,84 L16,96 M76,82 L76,98 M83,84 L88,84 L88,96 L83,96 M222,24 L309,24 L302,86 L229,86 Z M253,87 L249,106 L283,106 L279,87 M261,86 L273,86 L273,96 L261,96" />
+    <path android:fillColor="#00000000" android:strokeColor="#FF000000" android:strokeWidth="3" android:strokeLineCap="round" android:pathData="M168,90 L190,90 Q203,90 203,109 L203,122 L267,122 L267,98" />
+    <path android:fillColor="#FF000000" android:pathData="M91,65 L103,58 L103,63 L118,63 L118,67 L103,67 L103,72 Z" />
+</vector>
