@@ -1,0 +1,122 @@
+// Minimal schema for the Starlink Mini local API, written for this project.
+// Only the messages and fields this app needs. Field numbers were observed on
+// the device via gRPC server reflection (2026-10-18); names are descriptive.
+// Unknown fields in responses must be skipped, never treated as errors.
+//
+// Package and message names match the device so the RPC path is
+// /SpaceX.API.Device.Device/Handle. This file is not SpaceX's schema.
+
+syntax = "proto3";
+
+package SpaceX.API.Device;
+
+service Device {
+  rpc Handle(Request) returns (Response);
+}
+
+message Empty {}
+
+message Request {
+  uint64 id = 1;
+  oneof request {
+    Empty get_status = 1004;             // read; router answers with wifi_get_status
+    Empty get_device_info = 1008;        // read
+    WifiSetConfigRequest wifi_set_config = 3001;  // write; refused (Permission denied), not used
+    WifiSetupRequest wifi_setup = 3003;  // write; only while setup is pending
+    Empty wifi_get_config = 3009;        // read
+  }
+}
+
+message WifiSetupRequest {
+  bool skip = 1;
+  string network_name = 2;
+  string network_password = 3;  // untested
+  bool bypass = 4;
+}
+
+message WifiSetConfigRequest {
+  WifiConfig wifi_config = 1;
+}
+
+message Status {
+  int32 code = 1;
+  string message = 2;
+}
+
+message Response {
+  uint64 id = 1;
+  Status status = 2;
+  uint64 api_version = 3;
+  oneof response {
+    GetDeviceInfoResponse get_device_info = 1004;
+    Empty wifi_set_config = 3001;
+    Empty wifi_setup = 3003;
+    WifiGetStatusResponse wifi_get_status = 3004;
+    WifiGetConfigResponse wifi_get_config = 3009;
+  }
+}
+
+message GetDeviceInfoResponse {
+  DeviceInfo device_info = 1;
+}
+
+message DeviceInfo {
+  string id = 1;
+  string hardware_version = 2;  // dish on a Mini: "mini1_prod1"; router: "v4"
+  string software_version = 3;
+  string country_code = 4;
+}
+
+message DeviceState {
+  uint64 uptime_s = 1;
+}
+
+message WifiGetStatusResponse {
+  DeviceInfo device_info = 3;
+  DeviceState device_state = 4;
+  string ipv4_wan_address = 1003;
+}
+
+message WifiGetConfigResponse {
+  WifiConfig wifi_config = 1;
+}
+
+message WifiConfig {
+  bool setup_complete = 7;
+  bool bypass_mode = 31;
+  bool disable_2ghz = 64;
+  bool disable_5ghz = 65;
+  bool disable_5ghz_high = 66;
+  bool apply_disable_2ghz = 1076;
+  bool apply_disable_5ghz = 1077;
+  bool apply_disable_5ghz_high = 1078;
+  repeated Network networks = 1100;
+}
+
+message Network {
+  string ipv4 = 1003;
+  repeated BasicServiceSet basic_service_sets = 1007;
+  string domain = 1011;
+  uint32 vlan = 1014;
+}
+
+message BasicServiceSet {
+  enum Band {
+    RF_UNKNOWN = 0;
+    RF_2GHZ = 2;
+    RF_5GHZ = 5;
+    RF_5GHZ_HIGH = 6;
+  }
+  string bssid = 1003;
+  string ssid = 1005;
+  Band band = 1011;
+  bool disable = 1013;
+  bool hidden = 1015;
+  string iface_name = 1017;
+  oneof auth {
+    Empty auth_open = 2001;
+    Empty auth_wpa2 = 2002;
+    Empty auth_wpa3 = 2003;
+    Empty auth_wpa2_wpa3 = 2004;
+  }
+}
