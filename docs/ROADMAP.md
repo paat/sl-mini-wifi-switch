@@ -48,7 +48,9 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found
-- [ ] App icon, screenshots, F-Droid metadata
+- [x] App icon
+- [ ] Screenshots
+- [x] F-Droid metadata
 - [ ] Signed release builds via GitHub Releases
 - [ ] Make the repository public
 
