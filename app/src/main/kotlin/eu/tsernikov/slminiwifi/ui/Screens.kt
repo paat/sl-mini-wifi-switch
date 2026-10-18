@@ -99,7 +99,7 @@ fun HomeScreen(
         Heading(stringResource(title))
         Text(stringResource(body))
         onShowCredentials?.let { SecondaryButton(R.string.wifi_on_home_password, it) }
-        if (state != MiniState.SetupPending) onGuide?.let { PrimaryButton(R.string.field_start_here, it) }
+        if (state != MiniState.SetupPending && state != MiniState.Rebooting) onGuide?.let { PrimaryButton(R.string.field_start_here, it) }
         message?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
         onPermissions?.let { PrimaryButton(permissionsLabel, it) }
         if (isChecking || isConnecting || state == MiniState.Rebooting) {

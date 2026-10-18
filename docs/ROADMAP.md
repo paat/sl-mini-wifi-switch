@@ -58,6 +58,12 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] IO profile persistence, plain input rules, regression tests and affected light/dark screenshots
 - [ ] Human lifecycle/reconnect checks below the M2/M3 procedures in TESTING.md
 
+## PR #18 tribunal round 1
+
+- [x] Preserve result credentials through reset help and warm/cold quick entry, including pending permission prompts (T-001, T-003, T-007, T-008)
+- [x] Reset guide scroll on step changes and keep the reset animation released after its three-second hold (T-002, T-004)
+- [x] Keep reboot polling prominent and use a static clock/text wait for reduced motion (T-005, T-006)
+
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found

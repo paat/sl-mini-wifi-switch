@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -76,6 +75,9 @@ class FieldGuideScreenshotsTest {
     @Test fun restartingLargeLight() = restarting(false, 2f)
     @Test fun restartingLargeDark() = restarting(true, 2f)
 
+    @Test fun homeRebootingLight() = home(MiniState.Rebooting, false)
+    @Test fun homeRebootingDark() = home(MiniState.Rebooting, true)
+
     @Test fun homeReadyLight() = home(MiniState.SetupPending, false)
     @Test fun homeReadyDark() = home(MiniState.SetupPending, true)
     @Test fun homeNotFoundLight() = home(MiniState.NotFound, false)
@@ -118,8 +120,8 @@ class FieldGuideScreenshotsTest {
         }
         compose.onNodeWithContentDescription(lightDescription)
             .assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Light off"))
-        compose.onNodeWithContentDescription("Clock: waiting for the Mini to answer")
-            .assert(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo.Indeterminate))
+        compose.onNodeWithText("Waiting for the Mini to answer").assertIsDisplayed()
+        compose.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo)).assertDoesNotExist()
     }
 
     private fun home(state: MiniState, dark: Boolean) {
@@ -131,11 +133,17 @@ class FieldGuideScreenshotsTest {
         }
         val name = "home_${state.name.lowercase()}_${suffix(dark, 1f)}"
         capture(name)
-        compose.onNodeWithText("Start here").performScrollTo()
-            .assertHeightIsAtLeast(if (state == MiniState.SetupPending) 48.dp else 64.dp).performClick()
+        if (state == MiniState.Rebooting) {
+            compose.onNodeWithText("Start here").assertDoesNotExist()
+            compose.onNodeWithText("Waiting for the Mini to answer").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("We will check every 3 seconds", substring = true).performScrollTo().assertIsDisplayed()
+        } else {
+            compose.onNodeWithText("Start here").performScrollTo()
+                .assertHeightIsAtLeast(if (state == MiniState.SetupPending) 48.dp else 64.dp).performClick()
+        }
         compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed().performClick()
         capture("${name}_help")
-        assertEquals(1, guides)
+        assertEquals(if (state == MiniState.Rebooting) 0 else 1, guides)
         assertEquals(1, helps)
         checkFieldSizesAndText()
     }

@@ -174,6 +174,50 @@ class SetupViewModelLifecycleTest {
         } finally { controller.destroy(); Dispatchers.resetMain() }
     }
 
+    @Test fun homeKeepsPollingThroughRebootUntilMiniAnswersAgain() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val model = SetupViewModel(application)
+        val store = ViewModelStore().apply { put("setup", model) }
+        try {
+            ethernet()
+            var reachable = true
+            var reads = 0
+            model.transportFactory = { _, _ -> object : Transport {
+                override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): HttpResponse {
+                    reads++
+                    if (!reachable) throw IOException("Restarting")
+                    return when {
+                        body.contentEquals(Requests.wifiGetConfig()) -> response(3009,
+                            Wire.Writer().bytes(1, Wire.Writer().varint(7, 1).toByteArray()).toByteArray())
+                        body.contentEquals(Requests.getStatus()) -> response(3004)
+                        else -> response(1004)
+                    }
+                }
+            } }
+            model.start()
+            runCurrent()
+            assertEquals(MiniState.Configured, model.snapshot.state)
+            val polling = model.polling
+            reachable = false
+            advanceTimeBy(3_000)
+            runCurrent()
+            assertEquals(MiniState.Rebooting, model.snapshot.state)
+            assertEquals(Screen.Home, model.screen)
+            val readsDuringReboot = reads
+            advanceTimeBy(3_000)
+            runCurrent()
+            assertTrue(reads > readsDuringReboot)
+            assertSame(polling, model.polling)
+            assertTrue(polling!!.isActive)
+            reachable = true
+            advanceTimeBy(3_000)
+            runCurrent()
+            assertEquals(MiniState.Configured, model.snapshot.state)
+            assertEquals(Screen.Home, model.screen)
+            assertNull(model.writing)
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
     @Test fun returningToConfirmationRequiresFreshReadBeforeTheTapCanWrite() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val model = SetupViewModel(application)

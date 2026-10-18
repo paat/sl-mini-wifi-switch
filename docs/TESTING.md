@@ -232,3 +232,30 @@ Validation on 2026-10-18:
   `timedOutHome*`, `details*`, secure setup/progress/reconnect, Wi-Fi-off progress/likely
   result/200%-font result, and M4 restarting captures. No unrelated screenshots recorded.
 - Hardware checks above were not run; no writes were sent to real hardware.
+
+
+## PR #18 tribunal round 1 regression evidence
+
+All network behavior below uses fake transports; no real Mini writes were performed.
+
+| Finding | Regression evidence |
+|---|---|
+| T-001 | `MainActivityRecoveryTest.helpCheckAgainReturnsToResultAndPreservesCredentials`; `RobustnessScreensTest.savedPasswordHomeEntryReachesPasswordAndQrInEveryPostSetupState` follows Configured, Rebooting and NotFound Home entries through password and QR, then Done. Existing `savedPasswordEntryAvailableInEveryHomeState` covers visibility in all states. |
+| T-002 | `FieldGuideScreenshotsTest.guideStepChangesStartAtTopAtLargeFontIncludingBackAndAlternatePaths` scrolls each step to the bottom and checks the next step starts at zero, including Back and cable/Wi-Fi alternatives at 200% text. |
+| T-003 | `MainActivityRecoveryTest.quickLaunchRoutesOnlyIdleScreensHomeAndPreservesSetupAndResults` covers both results, phone-save guidance, editing, both confirmations and both progress screens. |
+| T-004 | `ResetPressAnimationTest.pressHoldsThreeSecondsThenRemainsReleasedThroughCycleEnd` samples the entire three-second hold and the 4000–4500 ms released pause. |
+| T-005 | `FieldGuideScreenshotsTest.homeRebootingLight` / `homeRebootingDark` assert no Start here action and visible waiting/recovery text; `SetupViewModelLifecycleTest.homeKeepsPollingThroughRebootUntilMiniAnswersAgain` verifies the same polling job reads through restart and recovery. |
+| T-006 | `FieldGuideScreenshotsTest.reducedMotionShowsOffAndDoesNotClaimHalfFinished` asserts static waiting text and no progress-range semantics. Affected light/dark and 200%-text guide/wait screenshots show the clock and text. |
+| T-007 (part of T-003) | `MainActivityRecoveryTest.quickLaunchKeepsPermissionStateEvenAfterDialogRequestIsConsumed`; `SetupViewModelLifecycleTest.quickLaunchDuringSecurePermissionPromptStillSendsExactlyOnceAfterGrant` exercises the permission request, quick launch, grant and one fake write, with no resend. |
+| T-008 | `MainActivityRecoveryTest.coldQuickLaunchAppliesIdleRuleAfterSavedStateRestoration` and `coldQuickLaunchKeepsRestoredSavedCredentials` exercise actual Activity creation with the setup action and saved state. |
+
+Screenshot selection: `ScreenshotsTest.rebooting*`,
+`FieldGuideScreenshotsTest.homeRebooting*`, `lightLight`, `lightDark`,
+`lightLarge*`, and `restarting*`. Only these 12 affected screenshot tests were
+recorded: 22 existing images updated and 4 new Home restart images added.
+
+Validation on 2026-10-18: `ANDROID_HOME=/home/dev/android-sdk ./gradlew --no-daemon build test`
+completed successfully. App: **322 tests in 22 suites**; protocol: **52 tests in
+5 suites**; total: **374 tests in 27 suites**, with **0 failures, 0 errors and
+0 skipped**. Android lint: **20 warnings, 0 errors**. Human hardware and physical
+animation checks remain the existing M4 procedures above.

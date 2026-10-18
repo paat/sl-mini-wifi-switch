@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -158,16 +159,17 @@ internal fun ResetLightIllustration(animate: Boolean = true) {
     }
 }
 
-/** All waits use a static final indicator when Android animations have been removed. */
+/** Reduced motion uses an explicit static wait, with no implied fraction completed. */
 @Composable
 internal fun WaitingProgress(animate: Boolean = true) {
     if (rememberGuideAnimationsEnabled(animate)) {
         LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     } else {
-        // This is an illustration of waiting, never a claim that the actual operation has finished.
-        val description = stringResource(R.string.rebooting_icon_description)
-        LinearProgressIndicator(progress = { 0.5f }, modifier = Modifier.fillMaxWidth()
-            .clearAndSetSemantics { contentDescription = description; progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate })
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(R.drawable.ic_waiting), null, Modifier.size(32.dp),
+                colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary))
+            Text(stringResource(R.string.waiting_for_mini))
+        }
     }
 }
 

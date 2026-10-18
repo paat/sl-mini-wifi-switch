@@ -110,8 +110,9 @@ existing read-only detection before offering the two setup choices. The tile doe
 no network work and uses `startActivityAndCollapse(PendingIntent)` on API 34+.
 The shortcut uses a separate, no-history launcher activity: Android clears the
 static shortcut target task, so this activity forwards an explicit intent into the
-existing app task. Reopening during a confirmed setup keeps its progress screen;
-it never interrupts verification or sends another change.
+existing app task. Warm and cold quick entry return only idle screens to Home. Editing, confirmation,
+pending permission dialogs, progress, saved-password results and phone-save guidance
+keep their current context. Quick entry never interrupts verification or sends another change.
 
 Home's **Start here** guide explains the physical reset, blinking-then-off light,
 wait, and either cable connection or STARLINK plus Android's Connect dialog. Its
@@ -119,13 +120,16 @@ last step returns to existing state detection. Back retraces the selected path;
 the step survives activity recreation without restoring any pending write.
 **Reset help** is an offline card reachable from Home and every error presentation.
 It explains that reset removes the saved Wi-Fi name/password and offers both Back
-and Check again. Reading the guide/help does not start network work.
+and Check again. From a result, both return to that result so credentials remain
+visible. Guide step changes start at the top, including Back and alternate paths.
+Home keeps restart waiting prominent without a Start here reset action while polling.
+Reading the guide/help does not start network work.
 
 All illustrations are project-drawn bundled vectors, animated as separate vector
 layers. The reset press holds for three seconds; the illustrative light sequence
 ends off. Readiness is established by detection, never by an off light alone.
 Android's Remove animations setting is observed while screens are open and shows
-still final poses, including an indeterminate, static wait indicator. Shared wait
+still final poses; waiting uses a static clock and text without a partial progress bar. Shared wait
 presentation supplies the expected time and recovery instruction; existing bounded
 state and setup verification policies remain unchanged.
 
