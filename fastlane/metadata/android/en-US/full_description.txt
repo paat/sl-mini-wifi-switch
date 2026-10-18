@@ -12,4 +12,4 @@ You can use the app with no internet connection. It does not track you. It has n
 
 This project is not affiliated with, endorsed by, or supported by Starlink or SpaceX. Starlink is a trademark of SpaceX. The name is used here only to say which dish the app is for.
 
-This first version has been tested on one Starlink Mini. Some steps still need more real-world testing.
+The way the app talks to the Mini was checked by hand on one Starlink Mini, but the app itself has not yet been tried on a real Mini, so please report problems on GitHub.
