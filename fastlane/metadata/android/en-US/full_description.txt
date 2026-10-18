@@ -4,7 +4,7 @@ Right after you reset the Mini, you can:
 
 - See whether the Mini is ready.
 - Turn the Mini's Wi-Fi off, and send the internet through a cable to your home router.
-- Turn Wi-Fi on with a name and password you choose. The app shows a QR code, and your phone joins that Wi-Fi on its own.
+- Turn Wi-Fi on with a name and password you choose. The app shows a QR code. When Android asks, tap Save, and the phone then joins that Wi-Fi by itself (on some phones you approve a notification instead).
 - Follow picture guides, including how to reset the Mini when you have no internet.
 - Open the app from a Quick Settings tile.
 
