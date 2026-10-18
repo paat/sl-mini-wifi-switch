@@ -6,10 +6,10 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 
 - [x] Gradle project with `:protocol` (JVM) and `:app` (Android), version catalog, Apache-2.0 headers optional
 - [x] CI on GitHub Actions: `./gradlew build test` on push and PR
-- [ ] `:protocol` varint and length-delimited encode/decode
-- [ ] gRPC-web framing: build request frame; parse data frames, trailer frame, and header-only status
-- [ ] Request builders for every file in `tools/vectors/*.request.hex`, each with a byte-exact unit test
-- [ ] Response parsers for `WifiConfig` subset, `DeviceInfo`, `Status`; test against `wifi_setup.response_ok.hex` and a synthetic config message
+- [x] `:protocol` varint and length-delimited encode/decode
+- [x] gRPC-web framing: build request frame; parse data frames, trailer frame, and header-only status
+- [x] Request builders for every supported request vector, each with a byte-exact unit test (`wifi_set_config_disable_radios` remains parser-only test input)
+- [x] Response parsers for `WifiConfig` subset, `DeviceInfo`, `Status`; test against `wifi_setup.response_ok.hex` and a synthetic config message
 
 ## M1: Read-only app
 
