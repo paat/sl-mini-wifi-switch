@@ -105,6 +105,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     var permissionDenied by mutableStateOf(false)
 
 
+    var awaitingPermissionResult = false
     var permissionRequest by mutableStateOf<List<String>?>(null)
     var initialized = false
 
@@ -152,6 +153,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     }
 
     fun permissionResult(result: Map<String, Boolean>) {
+        awaitingPermissionResult = false
         if (result.values.all { it }) {
             permissionDenied = false
             message = null
@@ -273,6 +275,17 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         else returnHome()
     }
 
+    fun openFromQuickLaunch() {
+        if (awaitingPermissionResult || permissionRequest != null || requestingWifi || writing?.isActive == true) return
+        val idle = when (screen) {
+            Screen.Home, Screen.FieldGuide, Screen.WifiOffError -> true
+            Screen.ResetGuide -> helpReturn == Screen.Home || helpReturn == Screen.WifiOffError
+            Screen.Details -> detailsReturn == Screen.Home
+            else -> false
+        }
+        if (idle) returnHome()
+    }
+
     fun returnHome() {
         connecting?.cancel()
         confirmedConnection = null
@@ -310,6 +323,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         val missing = if (confirmationIsWifi) wifiPermissions(PermissionAction.Connect).filterNot(::granted) else emptyList()
         if (missing.isNotEmpty()) {
             pendingPermissionAction = PermissionAction.SecureWifi
+            awaitingPermissionResult = true
             permissionRequest = missing
             return
         }
@@ -487,6 +501,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             if (action == PermissionAction.Connect || networks.findAvailable() == null) addAll(wifiPermissions(action))
         }.distinct().filterNot(::granted)
         if (needed.isNotEmpty()) {
+            awaitingPermissionResult = true
             permissionRequest = needed
         } else {
             message = null

@@ -130,6 +130,50 @@ class SetupViewModelLifecycleTest {
         }
     }
 
+    @Test fun quickLaunchDuringSecurePermissionPromptStillSendsExactlyOnceAfterGrant() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val controller = Robolectric.buildActivity(MainActivity::class.java).create()
+        try {
+            val model = controller.get().model
+            model.confirmedConnection = ethernet()
+            model.confirmationIsWifi = true
+            model.snapshot = MiniSnapshot(MiniState.SetupPending)
+            model.screen = Screen.WifiOnConfirm
+            model.profile = Profile("SavedName", "SavedPassword77")
+            model.profiles = memoryStore(model.profile)
+            val writeStarted = CompletableDeferred<Unit>()
+            var writes = 0
+            model.transportFactory = { _, _ -> object : Transport {
+                override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): HttpResponse {
+                    assertArrayEquals(Requests.setupWifi(model.profile.name, model.profile.password), body)
+                    writes++
+                    writeStarted.complete(Unit)
+                    kotlinx.coroutines.awaitCancellation()
+                }
+            } }
+            shadowOf(application).denyPermissions(Manifest.permission.NEARBY_WIFI_DEVICES)
+            model.confirmWifiOn()
+            assertTrue(model.awaitingPermissionResult)
+            assertNotNull(model.permissionRequest)
+            model.permissionRequest = null // Dialog now owns the request.
+            controller.newIntent(SetupLaunch.intent(controller.get()))
+            assertEquals(Screen.WifiOnConfirm, model.screen)
+            assertNotNull(model.confirmedConnection)
+            assertNull(model.writing)
+            shadowOf(application).grantPermissions(Manifest.permission.NEARBY_WIFI_DEVICES)
+            model.permissionResult(mapOf(Manifest.permission.NEARBY_WIFI_DEVICES to true))
+            writeStarted.await()
+            assertFalse(model.awaitingPermissionResult)
+            assertEquals(Screen.WifiOnProgress, model.screen)
+            controller.newIntent(SetupLaunch.intent(controller.get()))
+            model.confirmWifiOn()
+            assertEquals(1, writes)
+            assertEquals(Screen.WifiOnProgress, model.screen)
+            model.writing!!.cancel()
+            model.writing!!.join()
+        } finally { controller.destroy(); Dispatchers.resetMain() }
+    }
+
     @Test fun returningToConfirmationRequiresFreshReadBeforeTheTapCanWrite() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val model = SetupViewModel(application)

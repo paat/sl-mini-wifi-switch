@@ -214,21 +214,83 @@ class MainActivityRecoveryTest {
         } finally { controller.destroy() }
     }
 
-    @Test fun quickLaunchReturnsToHomeButKeepsAnActiveConfirmationResultWait() {
+    @Test fun quickLaunchRoutesOnlyIdleScreensHomeAndPreservesSetupAndResults() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).create()
         try {
             val activity = controller.get()
-            for (origin in listOf("FieldGuide", "ResetGuide", "Details", "WifiOnConfirm")) {
+            for (origin in listOf("FieldGuide", "ResetGuide", "Details", "WifiOffError")) {
                 setScreen(activity, origin)
                 controller.newIntent(SetupLaunch.intent(activity))
                 assertEquals("Home", state<Any>(activity, "screen").toString())
                 assertNull(field(activity, "writing"))
             }
-            for (progress in listOf("WifiOffProgress", "WifiOnProgress")) {
+            for (progress in listOf("WifiOff", "WifiOn", "WifiOnConfirm", "WifiOffProgress", "WifiOnProgress",
+                "WifiOffResult", "WifiOnResult", "WifiOnConnect")) {
                 setScreen(activity, progress)
                 controller.newIntent(SetupLaunch.intent(activity))
                 assertEquals(progress, state<Any>(activity, "screen").toString())
                 assertNull(field(activity, "writing"))
+            }
+        } finally { controller.destroy() }
+    }
+
+    @Test fun coldQuickLaunchAppliesIdleRuleAfterSavedStateRestoration() {
+        for (origin in listOf("FieldGuide", "ResetGuide", "Details", "WifiOffError", "WifiOff", "WifiOnConfirm", "WifiOffResult")) {
+            val controller = Robolectric.buildActivity(MainActivity::class.java,
+                SetupLaunch.intent(RuntimeEnvironment.getApplication())).create(Bundle().apply { putString("screen", origin) })
+            try {
+                val expected = when (origin) {
+                    "WifiOff", "WifiOffResult" -> origin
+                    "WifiOnConfirm" -> "WifiOn" // Process death never restores an unsent write.
+                    else -> "Home"
+                }
+                assertEquals(expected, controller.get().model.screen.name)
+                assertNull(controller.get().model.writing)
+            } finally { controller.destroy() }
+        }
+    }
+
+    @Test fun coldQuickLaunchKeepsRestoredSavedCredentials() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java,
+            SetupLaunch.intent(RuntimeEnvironment.getApplication()))
+        // Install the same store boundary used in production before onCreate restores state.
+        val model = androidx.lifecycle.ViewModelProvider(controller.get())[SetupViewModel::class.java]
+        var bytes: ByteArray? = null
+        model.profiles = ProfileStore(object : ProfileCipher {
+            override fun encrypt(plaintext: ByteArray) = plaintext.copyOf()
+            override fun decrypt(ciphertext: ByteArray) = ciphertext.copyOf()
+        }, object : ProfileBlob {
+            override fun read() = bytes
+            override fun write(ciphertext: ByteArray) { bytes = ciphertext }
+        }).also { it.save(credentials) }
+        controller.create(Bundle().apply {
+            putString("screen", "WifiOnConnect")
+            putBoolean("profileSaved", true)
+        })
+        try {
+            assertEquals(SetupViewModel.Screen.WifiOnResult, model.screen)
+            assertEquals(credentials.password, model.profile.password)
+            assertNull(model.writing)
+        } finally { controller.destroy() }
+    }
+
+    @Test fun quickLaunchKeepsPermissionStateEvenAfterDialogRequestIsConsumed() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).create()
+        try {
+            val model = controller.get().model
+            for (screen in listOf(SetupViewModel.Screen.Home, SetupViewModel.Screen.WifiOnConfirm)) {
+                model.screen = screen
+                model.pendingPermissionAction = SetupViewModel.PermissionAction.SecureWifi
+                model.awaitingPermissionResult = true
+                model.permissionRequest = null // Activity has already launched the system dialog.
+                val connection = StarlinkConnection(ShadowNetwork.newInstance(72), "192.168.1.1")
+                model.confirmedConnection = connection
+                controller.newIntent(SetupLaunch.intent(controller.get()))
+                assertEquals(screen, model.screen)
+                assertEquals(connection, model.confirmedConnection)
+                assertEquals(SetupViewModel.PermissionAction.SecureWifi, model.pendingPermissionAction)
+                assertEquals(true, model.awaitingPermissionResult)
+                assertNull(model.writing)
             }
         } finally { controller.destroy() }
     }

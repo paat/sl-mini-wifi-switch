@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         model = ViewModelProvider(this)[SetupViewModel::class.java]
         model.restore(savedInstanceState)
+        handleSetupLaunch(intent)
         autoConnect = AndroidWifiAutoConnect(this, model::releaseConnection) { saveNetwork.launch(it) }
         enableEdgeToEdge()
         setContent {
@@ -156,7 +157,11 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.action == SetupLaunch.ACTION && !model.isWriting) model.returnHome()
+        handleSetupLaunch(intent)
+    }
+
+    private fun handleSetupLaunch(intent: Intent) {
+        if (intent.action == SetupLaunch.ACTION) model.openFromQuickLaunch()
     }
 
     override fun onStart() {
