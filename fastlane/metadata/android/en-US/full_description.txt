@@ -1,12 +1,15 @@
 Mini Wi-Fi Switch is a simple app for people who use a Starlink Mini.
 
-It is meant for one job, right after you reset the Mini. You choose one of two things:
+Right after you reset the Mini, you can:
 
+- See whether the Mini is ready.
 - Turn the Mini's Wi-Fi off, and send the internet through a cable to your home router.
-- Turn Wi-Fi on with a name and password you choose.
+- Turn Wi-Fi on with a name and password you choose. The app shows a QR code. When Android asks, tap Save, and the phone then joins that Wi-Fi by itself (on some phones you approve a notification instead).
+- Follow picture guides, including how to reset the Mini when you have no internet.
+- Open the app from a Quick Settings tile.
 
 You can use the app with no internet connection. It does not track you. It has no ads. A Wi-Fi password stays on your phone. It is not sent to anyone else.
 
 This project is not affiliated with, endorsed by, or supported by Starlink or SpaceX. Starlink is a trademark of SpaceX. The name is used here only to say which dish the app is for.
 
-The guided steps for those two choices are not in this version yet. This version has the app icon and a short opening screen.
+The way the app talks to the Mini was checked by hand on one Starlink Mini, but the app itself has not yet been tried on a real Mini, so please report problems on GitHub.

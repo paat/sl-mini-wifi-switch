@@ -7,7 +7,7 @@ An open-source Android app that switches a **Starlink Mini** between two field m
 | **Wi-Fi off** (bypass) | Built-in Wi-Fi and router are off. The Ethernet port hands one wired device an internet address straight from Starlink. | Semi-permanent spot where you want a small RF footprint. |
 | **Secure Wi-Fi** | Built-in router on, Wi-Fi with your own name and password. | Quick stop: power bank in, phone or laptop on Wi-Fi, pack up. |
 
-> **Status: pre-alpha, M3 software implemented.** The app finds the Mini, shows read-only details, and offers Wi-Fi off or Wi-Fi on with a password only while setup is pending. Every setup write requires an explicit confirmation and is sent once. Secure Wi-Fi includes encrypted profile reuse, a password/QR result, and Android network saving. Protocol writes were verified separately by a human (see [docs/FINDINGS.md](docs/FINDINGS.md)); app hardware checks and password-limit checks remain pending.
+> **Status: pre-release v0.1.0.** The app shows whether the Mini is ready, turns Wi-Fi off, and turns Wi-Fi on with a password and a QR code. When Android asks, tap Save, and the phone then joins that Wi-Fi by itself (on some phones you approve a notification instead). Picture guides, a Quick Settings tile, and offline reset help are included. These app flows are not yet hardware-tested end to end: Wi-Fi off and Wi-Fi on via the app, joining the new Wi-Fi, and the 3-person acceptance test. Download the APK from [GitHub Releases](https://github.com/paat/sl-mini-wifi-switch/releases).
 
 ## Install
 

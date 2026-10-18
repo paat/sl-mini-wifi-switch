@@ -1,3 +1,1 @@
-First version of Mini Wi-Fi Switch.
-
-The app has its icon and a short opening screen. The guided setup steps come later. It works offline and does not track you.
+First version. Check the Mini, turn its Wi-Fi off, or turn Wi-Fi on with your own name and password. A QR code is shown. When Android asks, tap Save, and the phone then joins that Wi-Fi by itself (on some phones you approve a notification instead). Picture guides, a Quick Settings tile, and offline reset help are included. Works offline and does not track you. How the app talks to the Mini was checked by hand on one Mini; this app is not yet tried on a real Mini. Report problems on GitHub.
