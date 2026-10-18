@@ -93,7 +93,7 @@ class MainActivityRecoveryTest {
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
     @Suppress("DEPRECATION")
-    fun encryptionFailureStopsBeforeAnyNetworkWrite() = kotlinx.coroutines.test.runTest {
+    fun saveFailureThenRetryAndConfirmSendsExactlyOneWrite() = kotlinx.coroutines.test.runTest {
         // Any accidentally launched write is queued and cannot open a socket in this test.
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val controller = Robolectric.buildActivity(MainActivity::class.java).create()
@@ -110,13 +110,23 @@ class MainActivityRecoveryTest {
             setField(activity, "profiles", ProfileStore(object : ProfileCipher {
                 override fun encrypt(plaintext: ByteArray): ByteArray {
                     encryptionAttempts++
-                    error("Encryption unavailable")
+                    if (encryptionAttempts == 1) error("Encryption unavailable")
+                    return plaintext.copyOf()
                 }
                 override fun decrypt(ciphertext: ByteArray): ByteArray = error("Unused")
             }, object : ProfileBlob {
                 override fun read(): ByteArray? = null
-                override fun write(ciphertext: ByteArray) = error("Must not persist after encryption failure")
+                override fun write(ciphertext: ByteArray) = Unit
             }))
+            var writes = 0
+            activity.model.transportFactory = { _, _ -> object : eu.tsernikov.slminiwifi.protocol.Transport {
+                override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): eu.tsernikov.slminiwifi.protocol.HttpResponse {
+                    org.junit.Assert.assertArrayEquals(
+                        eu.tsernikov.slminiwifi.protocol.Requests.setupWifi(credentials.name, credentials.password), body)
+                    writes++
+                    return eu.tsernikov.slminiwifi.protocol.HttpResponse(200, mapOf("grpc-status" to "7"), byteArrayOf())
+                }
+            } }
             setState(activity, "profile", credentials)
             setState(activity, "snapshot", MiniSnapshot(MiniState.SetupPending))
             setScreen(activity, "WifiOnConfirm")
@@ -126,6 +136,16 @@ class MainActivityRecoveryTest {
             assertEquals("WifiOn", state<Any>(activity, "screen").toString())
             assertEquals(R.string.wifi_on_store_before_setup_failed, state<Int?>(activity, "profileError"))
             assertEquals(true, activity.model.writing?.isCompleted)
+            assertEquals(0, writes)
+            assertEquals(MiniState.SetupPending, activity.model.snapshot.state)
+            assertEquals(credentials.password, activity.model.profile.password)
+            // The form's Review this choice action returns to confirmation after Try again.
+            setScreen(activity, "WifiOnConfirm")
+            activity.model.confirmWifiOn()
+            activity.model.confirmWifiOn() // A repeated tap while saving cannot send twice.
+            activity.model.writing!!.join()
+            assertEquals(2, encryptionAttempts)
+            assertEquals(1, writes)
         } finally {
             controller.destroy()
             Dispatchers.resetMain()

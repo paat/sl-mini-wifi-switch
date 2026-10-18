@@ -330,8 +330,6 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         val confirmedProfile = profile
         // Claim the tap before suspending; saving is encrypted and runs off the UI thread.
         screen = Screen.WifiOnProgress
-        snapshot = MiniSnapshot(MiniState.NotFound)
-        detectedConnection = null
         writing = scope.launch {
             try {
                 profileSaved = saveProfile(confirmedProfile)
@@ -342,6 +340,8 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                 }
                 savedProfile = confirmedProfile
                 profileError = null
+                snapshot = MiniSnapshot(MiniState.NotFound)
+                detectedConnection = null
                 val outcome = withTransport(connection) { transport ->
                     WifiOnFlow(MiniClient(transport, "http://${connection.routerAddress}:9001"),
                         observe = { remaining ->

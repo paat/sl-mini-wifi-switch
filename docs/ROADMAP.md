@@ -64,6 +64,10 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Reset guide scroll on step changes and keep the reset animation released after its three-second hold (T-002, T-004)
 - [x] Keep reboot polling prominent and use a static clock/text wait for reduced motion (T-005, T-006)
 
+## PR #18 tribunal round 2
+
+- [x] Keep setup evidence after profile-save failure so retry can send once (T-001)
+
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found
