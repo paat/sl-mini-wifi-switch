@@ -192,6 +192,28 @@ class MainActivityRecoveryTest {
         } finally { controller.destroy() }
     }
 
+    @Test fun helpCheckAgainReturnsToResultAndPreservesCredentials() {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).create()
+        try {
+            val model = controller.get().model
+            model.profile = credentials
+            model.savedProfile = credentials
+            for (origin in listOf(SetupViewModel.Screen.WifiOnResult, SetupViewModel.Screen.WifiOffResult)) {
+                model.screen = origin
+                model.openHelp()
+                model.checkAfterHelp()
+                assertEquals(origin, model.screen)
+                assertEquals(credentials.password, model.profile.password)
+                assertNull(model.polling)
+                assertNull(model.writing)
+            }
+            model.screen = SetupViewModel.Screen.WifiOffError
+            model.openHelp()
+            model.checkAfterHelp()
+            assertEquals(SetupViewModel.Screen.Home, model.screen)
+        } finally { controller.destroy() }
+    }
+
     @Test fun quickLaunchReturnsToHomeButKeepsAnActiveConfirmationResultWait() {
         val controller = Robolectric.buildActivity(MainActivity::class.java).create()
         try {

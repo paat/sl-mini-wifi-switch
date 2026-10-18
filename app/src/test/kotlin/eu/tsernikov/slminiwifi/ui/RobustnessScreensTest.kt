@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -41,6 +42,32 @@ class RobustnessScreensTest {
             compose.onNodeWithText("Show my Wi-Fi password").performScrollTo().assertIsDisplayed().performClick()
         }
         assertEquals(MiniState.entries.size, opens)
+    }
+
+    @Test fun savedPasswordHomeEntryReachesPasswordAndQrInEveryPostSetupState() {
+        val model = eu.tsernikov.slminiwifi.SetupViewModel(org.robolectric.RuntimeEnvironment.getApplication())
+        val saved = Profile("Mini-Camp", "Camp7River9Sunny2")
+        model.savedProfile = saved
+        compose.setContent {
+            MiniTheme {
+                if (model.screen == eu.tsernikov.slminiwifi.SetupViewModel.Screen.Home) {
+                    HomeScreen(model.snapshot, onRefresh = {}, onConnect = {}, onDetails = {},
+                        onSetupChoice = {}, animateGuides = false, onShowCredentials = model::showSavedPassword)
+                } else {
+                    WifiOnResultScreen(model.profile, {}, null, model::returnHome, verified = model.wifiVerified)
+                }
+            }
+        }
+        try {
+            for (state in listOf(MiniState.Configured, MiniState.Rebooting, MiniState.NotFound)) {
+                compose.runOnIdle { model.snapshot = MiniSnapshot(state) }
+                compose.onNodeWithText("Show my Wi-Fi password").performScrollTo().performClick()
+                compose.onNodeWithText(saved.password).performScrollTo().assertIsDisplayed()
+                compose.onNodeWithContentDescription("Wi-Fi code. Scan with another phone to join this Wi-Fi.")
+                    .performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText("Done").performScrollTo().performClick()
+            }
+        } finally { model.networks.close() }
     }
 
     @Test fun homeDoesNotOfferPasswordWithoutSavedProfile() {

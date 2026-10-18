@@ -268,6 +268,11 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         if (screen == Screen.Home) startPolling(showProgress = true)
     }
 
+    fun checkAfterHelp() {
+        if (helpReturn == Screen.WifiOnResult || helpReturn == Screen.WifiOffResult) closeHelp()
+        else returnHome()
+    }
+
     fun returnHome() {
         connecting?.cancel()
         confirmedConnection = null
