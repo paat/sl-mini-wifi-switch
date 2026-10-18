@@ -66,7 +66,7 @@ Names below are ours, field numbers are the device's. Full schema: [proto/sl_min
 |---|---|---|---|
 | skip | 1 | bool | Finish setup with defaults (untested) |
 | network_name | 2 | string | Wi-Fi name (**verified**) |
-| network_password | 3 | string | Wi-Fi password (**untested**, see roadmap) |
+| network_password | 3 | string | Wi-Fi password (**verified**: results in `auth_wpa2_wpa3` on both bands; limits untested) |
 | bypass | 4 | bool | Bypass mode: Wi-Fi and router off (**verified**) |
 
 ### Response (`SpaceX.API.Device.Response`)
@@ -98,7 +98,7 @@ Names below are ours, field numbers are the device's. Full schema: [proto/sl_min
 
 `Network`: `ipv4 = 1003` (e.g. `192.168.1.1/24`), `domain = 1011`, `basic_service_sets = 1007` (repeated `BasicServiceSet`), `vlan = 1014`.
 
-`BasicServiceSet`: `bssid = 1003`, `ssid = 1005`, `band = 1011` (enum: 2 = 2.4 GHz, 5 = 5 GHz, 6 = 5 GHz high), `iface_name = 1017`, `disable = 1013`, `hidden = 1015`, and the auth oneof: `auth_open = 2001`, `auth_wpa2 = 2002`, `auth_wpa3 = 2003`, `auth_wpa2_wpa3 = 2004`. After a password setup, the app should confirm the auth field changed from `auth_open`.
+`BasicServiceSet`: `bssid = 1003`, `ssid = 1005`, `band = 1011` (enum: 2 = 2.4 GHz, 5 = 5 GHz, 6 = 5 GHz high), `iface_name = 1017`, `disable = 1013`, `hidden = 1015`, and the auth oneof: `auth_open = 2001`, `auth_wpa2 = 2002`, `auth_wpa3 = 2003`, `auth_wpa2_wpa3 = 2004`. After a password setup, the app should confirm the auth field changed from `auth_open` (verified result: `auth_wpa2_wpa3`). `AuthWpa2` and `AuthWpa2Wpa3` carry `string password = 1`, which reads back masked as `•••••`; never compare it with the real password.
 
 ### WifiGetStatusResponse (selected)
 

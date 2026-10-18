@@ -26,7 +26,8 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 
 ## M3: Secure Wi-Fi
 
-- [ ] **First, hardware-test `network_password`** with a human (TESTING.md) and record the result in FINDINGS.md: auth type, length limits
+- [x] Hardware-test `network_password` (FINDINGS.md test 10: works, WPA2/WPA3)
+- [ ] Hardware-test password limits (min/max length, special characters) and a client joining
 - [ ] Profile storage with Keystore-backed encryption
 - [ ] Send `wifi_setup{network_name, network_password}`, verify `setup_complete` and auth type
 - [ ] Input validation matching what the device accepts

@@ -30,7 +30,7 @@ message Request {
 message WifiSetupRequest {
   bool skip = 1;
   string network_name = 2;
-  string network_password = 3;  // untested
+  string network_password = 3;  // verified: gives WPA2/WPA3 on both bands
   bool bypass = 4;
 }
 
@@ -115,8 +115,12 @@ message BasicServiceSet {
   string iface_name = 1017;
   oneof auth {
     Empty auth_open = 2001;
-    Empty auth_wpa2 = 2002;
-    Empty auth_wpa3 = 2003;
-    Empty auth_wpa2_wpa3 = 2004;
+    AuthPassword auth_wpa2 = 2002;
+    Empty auth_wpa3 = 2003;          // contents not inspected
+    AuthPassword auth_wpa2_wpa3 = 2004;  // result of setup with a password
   }
+}
+
+message AuthPassword {
+  string password = 1;  // reads back masked ("•••••")
 }

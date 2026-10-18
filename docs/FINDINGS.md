@@ -26,10 +26,12 @@ A log of what was tested on real hardware. Add new entries at the top of each se
 | 7 | `wifi_setup{bypass=true}` right after reset | Ethernet | **Works.** Status 0. Within 30 s: Starlink Wi-Fi gone, phone `eth0` got `100.76.233.16/10` and a public IPv6 `/64`, dish answers at `192.168.100.1`, router address no longer answers. |
 | 8 | Factory reset from bypass, then `wifi_setup{network_name="camera2.4"}` | Ethernet | **Works.** Status 0. Router restarted (`CONFIG_UPDATE`), then `setup_complete: true`, SSID `camera2.4` on both bands, still `auth_open` (no password sent). Network visible in the phone's Wi-Fi list. |
 | 9 | Factory reset, then `wifi_set_config` disable 2.4/5/5-high radios (before setup) | Ethernet | Refused: 7 `Permission denied`. "Router on, Wi-Fi off" is not reachable. |
+| 10 | Still pending after test 9: `wifi_setup{network_name="sl-test", network_password=<16 random letters and digits>}` | Ethernet | **Works.** Status 0. Router answered again after about 50 s with `setup_complete: true`, SSID `sl-test` on 2.4 and 5 GHz, both `auth_wpa2_wpa3`. The unauthenticated `wifi_get_config` returns the password masked as `•••••`, not the real value. |
 
 ## Not yet tested
 
-- `network_password` in `wifi_setup`: accepted? Which auth type results (WPA2, WPA2/WPA3)? Length and character limits?
+- A client actually joining a Wi-Fi set up by script (test 10) with the password.
+- Password limits: shortest and longest accepted, special characters, what happens with fewer than 8 characters.
 - `wifi_setup` sent over the open `STARLINK` Wi-Fi instead of Ethernet (expected to behave the same, see test 3).
 - Whether the bypass response arrives before the Wi-Fi drops when sent over Wi-Fi.
 - `skip = true`.
