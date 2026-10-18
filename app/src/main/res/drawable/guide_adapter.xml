@@ -1,0 +1,4 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="320dp" android:height="150dp" android:viewportWidth="320" android:viewportHeight="150">
+    <!-- Adapter and USB-C plug move toward the phone in the accompanying screen. -->
+    <path android:fillColor="#00000000" android:strokeColor="#FF000000" android:strokeWidth="3" android:strokeLineJoin="round" android:pathData="M119,74 L164,74 Q168,74 168,78 L168,103 Q168,107 164,107 L119,107 Z M119,90 L106,90 M106,85 L97,85 L97,95 L106,95 Z M155,84 L163,84 L163,96 L155,96 Z" />
+</vector>

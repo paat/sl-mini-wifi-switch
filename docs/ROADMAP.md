@@ -13,9 +13,9 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 
 ## M1: Read-only app
 
-- [ ] Network discovery on Ethernet and the `STARLINK` Wi-Fi (see ARCHITECTURE.md), with OkHttp bound to the chosen network
-- [ ] State detection: SetupPending, Configured, Bypass, Rebooting, NotFound
-- [ ] Status screen: router and dish versions, SSIDs, auth type, LAN subnet, WAN address
+- [x] Network discovery on Ethernet and the `STARLINK` Wi-Fi (see ARCHITECTURE.md), with OkHttp bound to the chosen network
+- [x] State detection: SetupPending, Configured, Bypass, Rebooting, NotFound
+- [x] Status screen: router and dish versions, SSIDs, auth type, LAN subnet, WAN address
 - [ ] Hardware test by a human (TESTING.md, read-only section)
 
 ## M2: Wi-Fi off (bypass)
