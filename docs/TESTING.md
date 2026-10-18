@@ -131,7 +131,10 @@ physical factory reset before each write. Do not also send the curl vector.
 9. Interrupt verification, decline temporary Connect, or leave the Mini unreachable
    for 3 minutes. Expect reconnect guidance and **no automatic repeat write**.
    Reconnect by cable or manually join the new saved-profile Wi-Fi and check again.
-   Rotate/recreate the activity during confirmation/progress: no write may resume.
+   Rotate during confirmation: preserve the choice and enable Confirm only after a fresh read.
+   Rotate or background during progress: keep the same bounded verification and send no second write.
+   Decline the temporary Connect dialog, tap Try connecting again, and confirm it only rejoins/reads.
+   From Done/Back and a fresh launch, open Show my Wi-Fi password and check name, QR and Join on this phone.
 10. Restore the desired state with a physical reset plus setup or the official app.
     Record date, dish/router firmware, connection path, phone/Android version,
     response status, timing, auth on each BSS, boundary results and auto-connect
@@ -173,3 +176,59 @@ do not establish sunlight readability or TalkBack usability.
    The same progress screen must remain; no repeated write or discarded result.
    Record TalkBack, sunlight and Quick Settings observations in the PR. Record
    any confirmed hardware facts with date and firmware in FINDINGS.md.
+
+### Robustness follow-up (#11, #14, #17; human only)
+
+Use the existing M2 steps 1–7 and M3 steps 1–10 above; each accepted write still needs
+its own physical reset and explicit confirmation tap. During M2 step 3 and M3 step 3,
+rotate and background/return before confirming: no write-error message should appear,
+and confirmation must wait for a fresh read. During M2 step 4 and M3 step 4, rotate and
+background/return: the same verification should finish without another setup request.
+After M2 step 5 or M3 step 4, open Details and check the last router data plus fresh
+dish/config data. During M3 step 9, decline or time out Connect, retry with the visible
+button, rotate the error screen and retry again; each retry must be read-only.
+
+Read-only checks: attach an unrelated Ethernet LAN while STARLINK is available and
+check that discovery reaches the Mini over Wi-Fi. With a configured Mini and reachable
+dish, a failed router read must not claim Wi-Fi is off. In Settings grant a previously
+denied Nearby devices permission and return; the denied banner must clear. After M3
+step 5, Done/Back/relaunch must all retain Home access to the encrypted saved password,
+QR, and phone join action. These hardware checks remain unperformed.
+
+### Automated regression evidence (#11, #14, #17)
+
+All controller/network tests use fake transports or fixtures; they send nothing to hardware.
+
+| Item | Regression test (class.method) |
+|---|---|
+| #11.1 | `SetupViewModelNetworkTest.failedEthernetProbesFallThroughToAvailableStarlinkWifi` |
+| #11.2 | `MiniStateDetectorTest.reachableDishAndOneRouterFailureCannotClaimWifiOff` |
+| #11.3 | `MiniStateDetectorTest.intentionalNetworkReleaseClearsRestartHistory` |
+| #11.4 | `StarlinkNetworksTest.requestedWifiIgnoresInitialLinkPropertiesUntilGatewayArrives`; `requestedWifiDhcpWaitIsBoundedAfterAndroidReportsAvailable` |
+| #11.5 | `MiniStateDetectorTest.timedOutProbeRetainsDetailsAndMarksUncertaintyWithoutRecordingAbsence` |
+| #11.6 | `StarlinkNetworksTest.zeroOrInvalidSubnetPrefixesAreNotRouterEvidence` |
+| #11.7 | `OkHttpTransportTest.trailingDotAndEncodedHostsAreRejectedBeforeOpeningSocket` |
+| #11.8 | `SetupViewModelLifecycleTest.nearbyPermissionGrantedInSettingsClearsTheCorrectDeniedBanner` |
+| #14.1 | `SetupViewModelLifecycleTest.rotationRetainsBothConfirmationScreensAndUnsavedCredentialsWithoutAWrite`; `processDeathOnWifiOffConfirmationNeverReportsAnInterruptedWrite` |
+| #14.2 | `SetupViewModelLifecycleTest.rotationAndBackgroundKeepAnInFlightWriteAndVerificationAliveWithoutResending` |
+| #14.3 | `SetupViewModelLifecycleTest.returningToConfirmationRequiresFreshReadBeforeTheTapCanWrite` |
+| #14.4 | `WifiOffFlowTest.unavailableAddressOnlyAllowsLikelySuccessAfterConfirmedWrite` |
+| #14.5 | `WifiOffFlowTest.wifiLossAfterUnsentWriteDoesNotClaimLikelySuccessOrRetry`; `SetupViewModelNetworkTest.replacementStarlinkHandlePreventsWifiLossEvidence` |
+| #14.6 | `SetupViewModelNetworkTest.wifiOffVerificationRefreshesDishDetailsAndKeepsLastRouterSnapshot` |
+| #17.1 | `SetupViewModelLifecycleTest.savedPasswordCanBeReopenedAfterDoneAndAfterFreshLaunchWithoutClaimingVerification`; `ScreenshotsTest.savedPasswordHomeLight`; `savedPasswordHomeDark` |
+| #17.2 | `SetupViewModelNetworkTest.secureWifiVerificationRefreshesDetailsWithReadBackConfig` |
+| #17.3 | `SetupViewModelLifecycleTest.reconnectAfterBackgroundedErrorAndDeclinedDialogOnlyRequestsWifiAgain`; `WifiOnFlowTest.explicitReconnectVerificationCanRecoverAfterFailureWithoutSendingAnyWrite` |
+| #17.4 | `StarlinkNetworksTest.savedNameRequiresStarlinkIdentityAtTheDiscoveredGateway`; `savedNameWithoutDhcpGatewayDoesNotProbeFixedAddresses` |
+| #17.5 | `RobustnessScreensTest.unicodeNameLimitHasPlainRecoveryAndCannotContinue` |
+| #17.6 | `SetupViewModelLifecycleTest.profileEncryptionAndPersistenceRunOffTheCallingThread`; `MainActivityRecoveryTest.encryptionFailureStopsBeforeAnyNetworkWrite` |
+
+Validation on 2026-10-18:
+
+- `ANDROID_HOME=/home/dev/android-sdk ./gradlew --no-daemon build test`: passed;
+  311 app tests in 21 suites and 52 protocol tests in 5 suites, zero failures,
+  errors or skipped tests. Android lint completed with 20 warnings and zero errors.
+- Targeted `:app:recordRoborazziDebug`: 33 screenshot tests passed; 57 existing
+  images updated and 8 new light/dark images added. Selection: `savedPasswordHome*`,
+  `timedOutHome*`, `details*`, secure setup/progress/reconnect, Wi-Fi-off progress/likely
+  result/200%-font result, and M4 restarting captures. No unrelated screenshots recorded.
+- Hardware checks above were not run; no writes were sent to real hardware.

@@ -11,11 +11,15 @@ import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
+import eu.tsernikov.slminiwifi.protocol.ClientResult
+import eu.tsernikov.slminiwifi.protocol.DeviceInfo
+import eu.tsernikov.slminiwifi.protocol.MiniClient
 import java.io.Closeable
 import java.net.Inet4Address
 import kotlin.coroutines.resume
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class StarlinkConnection(val network: Network, val routerAddress: String)
 
@@ -25,6 +29,7 @@ class StarlinkNetworks(context: Context) : Closeable {
     private val wifi = context.applicationContext.getSystemService(WifiManager::class.java)
     private val lock = Any()
     private var requestedNetwork: Network? = null
+    private var requestedWifiName: String? = null
     private var requestCallback: ConnectivityManager.NetworkCallback? = null
     private var pendingRequest: CancellableContinuation<StarlinkConnection?>? = null
 
@@ -52,32 +57,59 @@ class StarlinkNetworks(context: Context) : Closeable {
         }?.let(::connection)
     }
 
-    /** Call again after a link change so DHCP changes are reflected in the returned gateway. */
-    @SuppressLint("MissingPermission") // Activity obtains runtime Wi-Fi/local-network permissions.
-    fun findAvailable(): StarlinkConnection? {
+    /** Probe each candidate in order: an unrelated cable must not mask setup Wi-Fi. */
+    @SuppressLint("MissingPermission")
+    fun findCandidates(): List<StarlinkConnection> {
         val networks = connectivity.allNetworks
-        val ethernet = networks.firstOrNull { network ->
+        val ethernet = networks.filter { network ->
             connectivity.getNetworkCapabilities(network)
                 ?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true && usableEthernet(network)
         }
-        if (ethernet != null) return connection(ethernet)
-        val requested = synchronized(lock) { requestedNetwork }
-        if (requested != null && requested in networks) return connection(requested)
-        val starlink = networks.firstOrNull { network ->
+        val requested = synchronized(lock) { requestedNetwork }?.takeIf { it in networks }
+        val starlink = networks.filter { network ->
             val capabilities = connectivity.getNetworkCapabilities(network)
             capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true &&
                 isNamedWifi(network, capabilities, "STARLINK")
         }
-        return starlink?.let(::connection)
+        return (ethernet + listOfNotNull(requested) + starlink).distinct().map(::connection)
     }
 
-    /** Recovery can read the one saved profile after the user joined it in Android settings. */
+    /** Call again after a link change so DHCP changes are reflected in the returned gateway. */
+    fun findAvailable(): StarlinkConnection? = findCandidates().firstOrNull()
+
+    /** A saved name alone is not identity. Only its discovered gateway may be checked first. */
+    suspend fun findVerifiedSavedWifi(
+        name: String,
+        readDeviceInfo: suspend (StarlinkConnection) -> DeviceInfo? = { candidate ->
+            OkHttpTransport(candidate.network, candidate.routerAddress).use { transport ->
+                (MiniClient(transport, "http://${candidate.routerAddress}:9001").getDeviceInfo()
+                    as? ClientResult.Ok)?.response?.deviceInfo
+            }
+        },
+    ): StarlinkConnection? {
+        val candidate = findWifi(name) ?: return null
+        val gateway = gateway(connectivity.getLinkProperties(candidate.network)) ?: return null
+        val discovered = candidate.copy(routerAddress = gateway.hostAddress!!)
+        val info = readDeviceInfo(discovered)
+        return discovered.takeIf { info?.id?.startsWith("Router-") == true }
+    }
+
+    /** For a network just created by this app. Home must use findVerifiedSavedWifi instead. */
     @SuppressLint("MissingPermission")
-    fun findWifi(name: String): StarlinkConnection? = connectivity.allNetworks.firstOrNull { network ->
-        val capabilities = connectivity.getNetworkCapabilities(network)
-        capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true &&
-            isNamedWifi(network, capabilities, name)
-    }?.let(::connection)
+    fun findWifi(name: String): StarlinkConnection? {
+        val available = connectivity.allNetworks
+        // Android can redact SSIDs even with Nearby Wi-Fi permission. The active
+        // specifier itself identifies replacement handles delivered to this request.
+        val requested = synchronized(lock) {
+            requestedNetwork?.takeIf { requestedWifiName == name && it in available }
+        }
+        if (requested != null) return connection(requested)
+        return available.firstOrNull { network ->
+            val capabilities = connectivity.getNetworkCapabilities(network)
+            capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true &&
+                isNamedWifi(network, capabilities, name)
+        }?.let(::connection)
+    }
 
     private fun usableEthernet(network: Network): Boolean {
         val properties = connectivity.getLinkProperties(network) ?: return false
@@ -87,16 +119,13 @@ class StarlinkNetworks(context: Context) : Closeable {
             if (address !is Inet4Address || address.isLinkLocalAddress ||
                 address.isLoopbackAddress || address.isAnyLocalAddress
             ) return@any false
+            if (link.prefixLength !in 1..32) return@any false
             val bytes = address.address
             val carrierAddress = (bytes[0].toInt() and 255) == 100 &&
                 (bytes[1].toInt() and 255) in 64..127
-            carrierAddress || (ipv4Number(bytes) ushr (32 - link.prefixLength)) ==
-                (ipv4Number(gateway) ushr (32 - link.prefixLength))
+            carrierAddress || sameSubnet(bytes, gateway, link.prefixLength)
         }
     }
-
-    private fun ipv4Number(bytes: ByteArray): Long =
-        bytes.fold(0L) { value, byte -> (value shl 8) or (byte.toLong() and 255) }
 
     @Suppress("DEPRECATION")
     @SuppressLint("MissingPermission")
@@ -116,11 +145,16 @@ class StarlinkNetworks(context: Context) : Closeable {
         network: Network,
         properties: LinkProperties? = connectivity.getLinkProperties(network),
     ): StarlinkConnection {
-        val gateway = properties?.routes?.firstOrNull {
+        return StarlinkConnection(network, gateway(properties)?.hostAddress ?: "192.168.1.1")
+    }
+
+    private fun gateway(properties: LinkProperties?): Inet4Address? {
+        val routeGateway = properties?.routes?.firstOrNull {
             it.isDefaultRoute && it.gateway is Inet4Address && !it.gateway!!.isAnyLocalAddress
         }?.gateway as? Inet4Address
-        val address = gateway ?: if (Build.VERSION.SDK_INT >= 30) properties?.dhcpServerAddress else null
-        return StarlinkConnection(network, address?.hostAddress ?: "192.168.1.1")
+        return routeGateway ?: if (Build.VERSION.SDK_INT >= 30) {
+            properties?.dhcpServerAddress?.takeUnless { it.isAnyLocalAddress }
+        } else null
     }
 
     /** Invoke only after the user's Connect tap. Android supplies the connection confirmation. */
@@ -135,59 +169,66 @@ class StarlinkNetworks(context: Context) : Closeable {
     @SuppressLint("MissingPermission")
     private suspend fun requestWifi(name: String, password: String?, timeoutMillis: Int): StarlinkConnection? {
         releaseRequest()
-        return suspendCancellableCoroutine { continuation ->
-            val callback = object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) {
-                    synchronized(lock) {
-                        if (requestCallback !== this) return
-                        requestedNetwork = network
-                    }
-                }
-
-                override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) {
-                    synchronized(lock) {
-                        if (requestCallback !== this || requestedNetwork != network) return
-                        pendingRequest = null
-                        if (continuation.isActive) continuation.resume(connection(network, properties))
-                    }
-                }
-
-                override fun onUnavailable() {
-                    synchronized(lock) {
-                        if (requestCallback === this) {
-                            requestCallback = null
-                            requestedNetwork = null
-                            pendingRequest = null
+        // Android's timeout stops after onAvailable, which can precede DHCP indefinitely.
+        return withTimeoutOrNull(timeoutMillis.toLong()) {
+            suspendCancellableCoroutine { continuation ->
+                val callback = object : ConnectivityManager.NetworkCallback() {
+                    override fun onAvailable(network: Network) {
+                        synchronized(lock) {
+                            if (requestCallback !== this) return
+                            requestedNetwork = network
                         }
                     }
-                    if (continuation.isActive) continuation.resume(null)
-                }
 
-                override fun onLost(network: Network) {
-                    synchronized(lock) {
-                        if (requestCallback === this && requestedNetwork == network) requestedNetwork = null
+                    override fun onLinkPropertiesChanged(network: Network, properties: LinkProperties) {
+                        synchronized(lock) {
+                            if (requestCallback !== this || requestedNetwork != network) return
+                            if (gateway(properties) == null) return
+                            pendingRequest = null
+                            if (continuation.isActive) continuation.resume(connection(network, properties))
+                        }
+                    }
+
+                    override fun onUnavailable() {
+                        synchronized(lock) {
+                            if (requestCallback === this) {
+                                requestCallback = null
+                                requestedNetwork = null
+                                requestedWifiName = null
+                                pendingRequest = null
+                            }
+                        }
+                        if (continuation.isActive) continuation.resume(null)
+                    }
+
+                    override fun onLost(network: Network) {
+                        synchronized(lock) {
+                            if (requestCallback === this && requestedNetwork == network) requestedNetwork = null
+                        }
                     }
                 }
-            }
-            val request = NetworkRequest.Builder()
-                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-                .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                .setNetworkSpecifier(WifiNetworkSpecifier.Builder().setSsid(name).apply {
-                    if (password != null) setWpa2Passphrase(password)
-                }.build())
-                .build()
-            synchronized(lock) {
-                requestCallback = callback
-                pendingRequest = continuation
-                try {
-                    connectivity.requestNetwork(request, callback, timeoutMillis)
-                } catch (failure: RuntimeException) {
-                    requestCallback = null
-                    pendingRequest = null
-                    throw failure
+                val request = NetworkRequest.Builder()
+                    .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                    .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    .setNetworkSpecifier(WifiNetworkSpecifier.Builder().setSsid(name).apply {
+                        if (password != null) setWpa2Passphrase(password)
+                    }.build())
+                    .build()
+                synchronized(lock) {
+                    requestCallback = callback
+                    requestedWifiName = name
+                    pendingRequest = continuation
+                    try {
+                        connectivity.requestNetwork(request, callback, timeoutMillis)
+                    } catch (failure: RuntimeException) {
+                        requestCallback = null
+                        requestedWifiName = null
+                        pendingRequest = null
+                        throw failure
+                    }
                 }
+                continuation.invokeOnCancellation { releaseCallback(callback) }
             }
-            continuation.invokeOnCancellation { releaseCallback(callback) }
         }
     }
 
@@ -201,6 +242,7 @@ class StarlinkNetworks(context: Context) : Closeable {
             if (requestCallback !== callback) return
             requestCallback = null
             requestedNetwork = null
+            requestedWifiName = null
             pendingRequest?.let { if (it.isActive) it.resume(null) }
             pendingRequest = null
             try {
@@ -212,4 +254,11 @@ class StarlinkNetworks(context: Context) : Closeable {
     }
 
     override fun close() = releaseRequest()
+}
+
+/** Invalid or catch-all prefixes are not evidence that a cable reaches the router. */
+internal fun sameSubnet(address: ByteArray, gateway: ByteArray, prefixLength: Int): Boolean {
+    if (prefixLength !in 1..32) return false
+    fun number(bytes: ByteArray) = bytes.fold(0L) { value, byte -> (value shl 8) or (byte.toLong() and 255) }
+    return (number(address) ushr (32 - prefixLength)) == (number(gateway) ushr (32 - prefixLength))
 }

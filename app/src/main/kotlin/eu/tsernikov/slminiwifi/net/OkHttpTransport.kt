@@ -17,6 +17,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Dns
+import okhttp3.EventListener
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Request
@@ -27,12 +28,17 @@ import okhttp3.Response
 class OkHttpTransport internal constructor(
     socketFactory: SocketFactory,
     routerAddress: String,
+    onRequestWritten: () -> Unit = {},
 ) : Transport, Closeable {
-    constructor(network: Network, routerAddress: String) : this(network.socketFactory, routerAddress)
+    constructor(network: Network, routerAddress: String, onRequestWritten: () -> Unit = {}) :
+        this(network.socketFactory, routerAddress, onRequestWritten)
 
     private val addresses = LocalAddresses(routerAddress)
     private val client = OkHttpClient.Builder()
         .socketFactory(socketFactory)
+        .eventListener(object : EventListener() {
+            override fun requestBodyEnd(call: Call, byteCount: Long) = onRequestWritten()
+        })
         .dns(addresses)
         .proxy(Proxy.NO_PROXY)
         .protocols(listOf(Protocol.HTTP_1_1))
@@ -104,8 +110,12 @@ internal class LocalAddresses(routerAddress: String) : Dns {
         } catch (failure: Exception) {
             throw IOException("Invalid local endpoint", failure)
         }
-        val host = uri.host ?: throw UnknownHostException("An IPv4 literal is required")
+        // Android's URI implementation can normalize a trailing dot in host. The raw
+        // authority must contain exactly the canonical literal and documented port.
+        val host = uri.rawAuthority?.substringBefore(':')
+            ?: throw UnknownHostException("An IPv4 literal is required")
         lookup(host)
+        if (uri.rawAuthority != "$host:${uri.port}") throw IOException("Endpoint is not allowed")
         val routerEndpoint = host != "192.168.100.1" && uri.port == 9001
         val dishEndpoint = host == "192.168.100.1" && uri.port == 9201
         if (uri.scheme != "http" || uri.rawUserInfo != null || uri.rawQuery != null ||

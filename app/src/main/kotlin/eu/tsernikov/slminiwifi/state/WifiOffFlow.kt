@@ -1,6 +1,7 @@
 package eu.tsernikov.slminiwifi.state
 
 import eu.tsernikov.slminiwifi.protocol.ClientResult
+import eu.tsernikov.slminiwifi.protocol.DeviceInfo
 import eu.tsernikov.slminiwifi.protocol.MiniClient
 import eu.tsernikov.slminiwifi.protocol.Transport
 import kotlinx.coroutines.delay
@@ -18,6 +19,8 @@ data class WifiOffObservation(
     val routerAnswered: Boolean,
     val dishReachable: Boolean,
     val ipv4Addresses: List<String> = emptyList(),
+    val routerInfo: DeviceInfo? = null,
+    val dishInfo: DeviceInfo? = null,
 )
 
 /**
@@ -31,6 +34,7 @@ class WifiOffFlow(
     private val observe: suspend (remainingMillis: Long) -> WifiOffObservation,
     private val wait: suspend (Long) -> Unit = { delay(it) },
     private val nowMillis: () -> Long = { System.nanoTime() / 1_000_000 },
+    private val requestWritten: () -> Boolean = { false },
 ) {
     private var attempted = false
     private var outcome: WifiOffOutcome? = null
@@ -54,17 +58,23 @@ class WifiOffFlow(
             ))
         }
 
-        // A transport failure can mean that setup succeeded but the connection disappeared
-        // before the reply arrived. Observe the original link before deciding it failed.
+        // Link loss alone says nothing about whether the Mini received the change. Only a
+        // successful reply or a fully transmitted request permits the weaker "likely" result.
+        val changeMayHaveApplied = reply is ClientResult.Ok || requestWritten()
         while (nowMillis() - startedAt < VERIFY_TIMEOUT_MILLIS) {
             val observation = observe(VERIFY_TIMEOUT_MILLIS - (nowMillis() - startedAt))
-            if (connection == WifiOffConnection.Wifi && !observation.originalWifiPresent) {
+            if (nowMillis() - startedAt > VERIFY_TIMEOUT_MILLIS) break
+            if (connection == WifiOffConnection.Wifi && changeMayHaveApplied && !observation.originalWifiPresent) {
                 return finish(WifiOffOutcome.Success(likely = true))
             }
             if (connection == WifiOffConnection.Ethernet && !observation.routerAnswered &&
-                observation.dishReachable && (observation.ipv4Addresses.isEmpty() ||
-                    observation.ipv4Addresses.any(::isStarlinkAddress))) {
-                return finish(WifiOffOutcome.Success(likely = false))
+                observation.dishReachable) {
+                if (observation.ipv4Addresses.any(::isStarlinkAddress)) {
+                    return finish(WifiOffOutcome.Success(likely = false))
+                }
+                if (observation.ipv4Addresses.isEmpty() && changeMayHaveApplied) {
+                    return finish(WifiOffOutcome.Success(likely = true))
+                }
             }
             val remaining = VERIFY_TIMEOUT_MILLIS - (nowMillis() - startedAt)
             if (remaining > 0) wait(minOf(POLL_INTERVAL_MILLIS, remaining))
@@ -77,13 +87,6 @@ class WifiOffFlow(
     companion object {
         const val VERIFY_TIMEOUT_MILLIS = 60_000L
         const val POLL_INTERVAL_MILLIS = 3_000L
-
-        private fun isStarlinkAddress(address: String): Boolean {
-            val parts = address.split('.')
-            if (parts.size != 4) return false
-            val octets = parts.map { it.toIntOrNull() ?: return false }
-            return octets.all { it in 0..255 } && octets[0] == 100 && octets[1] in 64..127
-        }
     }
 }
 
@@ -100,7 +103,21 @@ suspend fun probeWifiOff(
         override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray) =
             transport.post(url, headers, body).also { routerAnswered = true }
     }
-    MiniClient(routerTransport, "http://$routerAddress:9001").getDeviceInfo()
-    val dishReachable = MiniClient(transport, "http://192.168.100.1:9201").getDeviceInfo() is ClientResult.Ok
-    return WifiOffObservation(originalWifiPresent, routerAnswered, dishReachable, ipv4Addresses)
+    val routerInfo = (MiniClient(routerTransport, "http://$routerAddress:9001").getDeviceInfo()
+        as? ClientResult.Ok)?.response?.deviceInfo
+    val dishInfo = (MiniClient(transport, "http://192.168.100.1:9201").getDeviceInfo()
+        as? ClientResult.Ok)?.response?.deviceInfo
+    return WifiOffObservation(originalWifiPresent, routerAnswered, dishInfo != null, ipv4Addresses, routerInfo, dishInfo)
+}
+
+/** A Starlink Internet lease, not the Mini router's LAN or WAN status address. */
+internal fun isStarlinkAddress(address: String): Boolean {
+    val parts = address.split('.')
+    if (parts.size != 4) return false
+    val octets = parts.map { part ->
+        if (part.isEmpty() || part.any { it !in '0'..'9' }) return false
+        if (part.length > 1 && part[0] == '0') return false
+        part.toIntOrNull() ?: return false
+    }
+    return octets.all { it in 0..255 } && octets[0] == 100 && octets[1] in 64..127
 }

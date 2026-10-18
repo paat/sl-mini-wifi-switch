@@ -38,6 +38,11 @@ class WifiOnFlow(
         val reply = client.setupWifi(profile.name, profile.password)
         if (reply is ClientResult.DeviceError) return finish(failure(reply))
 
+        return verify(startedAt)
+    }
+
+    /** Explicit read-only reconnect; this entry point never sends setup. */
+    suspend fun verify(startedAt: Long = nowMillis()): WifiOnOutcome {
         // The router can restart before its write reply arrives. Silence does not justify retrying.
         while (nowMillis() - startedAt < VERIFY_TIMEOUT_MILLIS) {
             val observation = observe(VERIFY_TIMEOUT_MILLIS - (nowMillis() - startedAt))

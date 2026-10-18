@@ -38,6 +38,7 @@ fun WifiOffConfirmScreen(
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
     animateGuides: Boolean = true,
+    canConfirm: Boolean = true,
 ) {
     Screen {
         Heading(stringResource(R.string.wifi_off_confirm_title))
@@ -45,7 +46,11 @@ fun WifiOffConfirmScreen(
         RouterIllustration(animateGuides)
         Text(stringResource(R.string.wifi_off_undo))
         if (isWifi) Text(stringResource(R.string.wifi_off_disconnect_warning))
-        PrimaryButton(R.string.wifi_off_confirm, onConfirm)
+        if (!canConfirm) {
+            WaitingProgress(animateGuides)
+            Text(stringResource(R.string.confirm_checking))
+        }
+        PrimaryButton(R.string.wifi_off_confirm, onConfirm, canConfirm)
         SecondaryButton(R.string.cancel, onCancel)
     }
 }
@@ -66,6 +71,7 @@ internal fun SetupProgressScreen(
     @StringRes time: Int,
     @StringRes help: Int,
     animateGuides: Boolean = true,
+    onReconnect: (() -> Unit)? = null,
 ) {
     Screen {
         Image(
@@ -78,13 +84,17 @@ internal fun SetupProgressScreen(
         WaitingProgress(animateGuides)
         Text(stringResource(time))
         Text(stringResource(help))
+        onReconnect?.let {
+            Text(stringResource(R.string.wifi_on_reconnect_body))
+            PrimaryButton(R.string.wifi_on_reconnect, it)
+        }
     }
 }
 
 @Composable
 fun WifiOffResultScreen(
     likely: Boolean,
-    onDetails: () -> Unit,
+    onDetails: (() -> Unit)?,
     onDone: () -> Unit,
     animateGuides: Boolean = true,
 ) {
@@ -93,14 +103,14 @@ fun WifiOffResultScreen(
             painterResource(R.drawable.ic_wifi_off), stringResource(R.string.bypass_icon_description),
             Modifier.size(56.dp), colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary),
         )
-        Heading(stringResource(R.string.wifi_off_result_title))
+        Heading(stringResource(if (likely) R.string.wifi_off_likely_title else R.string.wifi_off_result_title))
         if (likely) Text(stringResource(R.string.wifi_off_likely))
         Text(stringResource(R.string.wifi_off_router_instruction))
         RouterIllustration(animateGuides)
         Text(stringResource(R.string.wifi_off_port_help))
         Text(stringResource(R.string.wifi_off_undo))
         PrimaryButton(R.string.done, onDone)
-        SecondaryButton(R.string.details, onDetails)
+        onDetails?.let { SecondaryButton(R.string.details, it) }
     }
 }
 
@@ -111,6 +121,7 @@ fun WifiOffErrorScreen(
     animateGuides: Boolean = true,
     @StringRes unreachableBody: Int = R.string.wifi_off_unreachable_body,
     onShowCredentials: (() -> Unit)? = null,
+    onReconnect: (() -> Unit)? = null,
     onHelp: (() -> Unit)? = null,
 ) {
     val title = when (error) {
@@ -137,6 +148,10 @@ fun WifiOffErrorScreen(
             if (error == WifiOffError.AlreadySetUp) R.string.show_reset_steps else R.string.reconnect_to_mini,
             onNext,
         )
+        onReconnect?.let {
+            Text(stringResource(R.string.wifi_on_reconnect_body))
+            PrimaryButton(R.string.wifi_on_reconnect, it)
+        }
         onShowCredentials?.let { SecondaryButton(R.string.wifi_on_show_credentials, it) }
         onHelp?.let { SecondaryButton(R.string.field_reset_help, it) }
     }

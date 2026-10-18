@@ -144,6 +144,21 @@ class WifiOnFlowTest {
         assertEquals(60, reads)
     }
 
+    @Test fun explicitReconnectVerificationCanRecoverAfterFailureWithoutSendingAnyWrite() {
+        val subject = flow()
+        readReply = { throw IOException("Phone did not join after Connect was declined") }
+        assertEquals(WifiOnOutcome.Failure(WifiOffError.CantReach), runCall { subject.verify() })
+        assertEquals(180_000L, now)
+        assertEquals(0, writes)
+
+        // A later explicit Connect attempt uses a fresh read-only verification budget.
+        readReply = { config() }
+        assertEquals(WifiOnOutcome.Success, runCall { subject.verify() })
+        assertEquals(0, writes)
+        assertEquals(61, reads)
+        assertEquals(180_000L, budgets.last())
+    }
+
     @Test fun codeNineRefusesWithoutReadOrRetry() {
         setupReply = HttpResponse(200, mapOf("grpc-status" to "9"), byteArrayOf())
         val subject = flow()

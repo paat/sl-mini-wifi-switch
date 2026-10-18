@@ -64,6 +64,7 @@ fun HomeScreen(
     onPermissions: (() -> Unit)? = null,
     @StringRes permissionsLabel: Int = R.string.open_phone_settings,
     onGuide: (() -> Unit)? = null,
+    onShowCredentials: (() -> Unit)? = null,
     onHelp: (() -> Unit)? = null,
 ) {
     Screen {
@@ -74,14 +75,14 @@ fun HomeScreen(
             MiniState.Configured -> R.string.configured_title
             MiniState.Bypass -> R.string.bypass_title
             MiniState.Rebooting -> R.string.rebooting_title
-            MiniState.NotFound -> R.string.not_found_title
+            MiniState.NotFound -> if (snapshot.probeTimedOut) R.string.check_timed_out_title else R.string.not_found_title
         }
         val body = when (state) {
             MiniState.SetupPending -> R.string.ready_body
             MiniState.Configured -> R.string.configured_body
             MiniState.Bypass -> R.string.bypass_body
             MiniState.Rebooting -> R.string.rebooting_body
-            MiniState.NotFound -> R.string.not_found_body
+            MiniState.NotFound -> if (snapshot.probeTimedOut) R.string.check_timed_out_body else R.string.not_found_body
         }
         val icon = when (state) {
             MiniState.SetupPending -> R.drawable.ic_mini_ready to R.string.ready_icon_description
@@ -97,6 +98,7 @@ fun HomeScreen(
         )
         Heading(stringResource(title))
         Text(stringResource(body))
+        onShowCredentials?.let { SecondaryButton(R.string.wifi_on_home_password, it) }
         if (state != MiniState.SetupPending) onGuide?.let { PrimaryButton(R.string.field_start_here, it) }
         message?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
         onPermissions?.let { PrimaryButton(permissionsLabel, it) }
@@ -164,6 +166,7 @@ fun DetailsScreen(details: MiniDetails, onBack: () -> Unit) {
     Screen {
         SecondaryButton(R.string.back, onBack)
         Heading(stringResource(R.string.details))
+        Text(stringResource(R.string.details_last_readings))
         DeviceDetails(R.string.router_details, details.routerInfo)
         DeviceDetails(R.string.dish_details, details.dishInfo)
         GuideCard {

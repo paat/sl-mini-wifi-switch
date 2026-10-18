@@ -54,6 +54,16 @@ class OkHttpTransportTest {
         ).forEach { url -> assertThrows(IOException::class.java) { addresses.checkEndpoint(url) } }
     }
 
+    @Test fun trailingDotAndEncodedHostsAreRejectedBeforeOpeningSocket() {
+        OkHttpTransport(NoSockets, "192.168.1.1").use { transport ->
+            listOf("192.168.1.1.", "192.168.1.1%2e", "192.168.100.1.").forEach { host ->
+                assertThrows(IOException::class.java) {
+                    runBlocking { transport.post("http://$host:9001$path", emptyMap(), byteArrayOf()) }
+                }
+            }
+        }
+    }
+
     @Test fun gatewayMustBeACanonicalIpv4Literal() {
         listOf("router.local", "192.168.1.999", "192.168.01.1", "192.168.1", "::1", "-1.1.1.1")
             .forEach { assertThrows(IllegalArgumentException::class.java) { LocalAddresses(it) } }

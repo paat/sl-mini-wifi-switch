@@ -61,6 +61,11 @@ class FieldAccessibilityTest {
     @Test fun refusedErrorHasOfflineHelpAtLargeType() = error(WifiOffError.Refused)
     @Test fun unreachableErrorHasOfflineHelpAtLargeType() = error(WifiOffError.CantReach)
 
+    @Test fun reconnectOfferRemainsReachableAtLargeType() {
+        show(2f) { WifiOnProgressScreen(onReconnect = {}) }
+        checkActions(listOf("Try connecting again"))
+    }
+
     @Test fun passwordStorageErrorHasOfflineHelpAtLargeType() {
         var help = 0
         show(2f) {
@@ -126,7 +131,7 @@ class FieldAccessibilityTest {
     private fun home(state: MiniState, fontScale: Float) {
         show(fontScale) {
             HomeScreen(MiniSnapshot(state), onRefresh = {}, onConnect = {}, onDetails = {},
-                onSetupChoice = {}, animateGuides = false, onGuide = {}, onHelp = {})
+                onSetupChoice = {}, animateGuides = false, onGuide = {}, onHelp = {}, onShowCredentials = {})
         }
         checkActions(if (state == MiniState.SetupPending)
             listOf("Wi-Fi off", "Wi-Fi on with password")

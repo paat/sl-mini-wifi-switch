@@ -69,14 +69,14 @@ class MainActivityRecoveryTest {
         }
     }
 
-    @Test fun confirmationRecreationNeedsReconnectAndCannotResumeWrite() =
-        assertInterruptedScreen("WifiOnConfirm")
+    @Test fun processRecreationOnConfirmationReturnsToEditingWithoutClaimingAWrite() =
+        assertUnsentScreen("WifiOnConfirm")
 
     @Test fun progressRecreationNeedsReconnectAndCannotResumeWrite() =
         assertInterruptedScreen("WifiOnProgress")
 
     @Test fun setupRecreationDoesNotRestoreCredentialsOrPendingChoice() =
-        assertInterruptedScreen("WifiOn")
+        assertUnsentScreen("WifiOn")
 
     @Test fun resultWithoutEncryptedProfileReturnsHome() = assertResultFallsBack("WifiOnResult")
 
@@ -93,9 +93,9 @@ class MainActivityRecoveryTest {
     @Test
     @OptIn(ExperimentalCoroutinesApi::class)
     @Suppress("DEPRECATION")
-    fun encryptionFailureStopsBeforeAWriteJobCanStart() {
+    fun encryptionFailureStopsBeforeAnyNetworkWrite() = kotlinx.coroutines.test.runTest {
         // Any accidentally launched write is queued and cannot open a socket in this test.
-        Dispatchers.setMain(StandardTestDispatcher())
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val controller = Robolectric.buildActivity(MainActivity::class.java).create()
         try {
             val activity = controller.get()
@@ -120,11 +120,12 @@ class MainActivityRecoveryTest {
             setState(activity, "profile", credentials)
             setState(activity, "snapshot", MiniSnapshot(MiniState.SetupPending))
             setScreen(activity, "WifiOnConfirm")
-            MainActivity::class.java.getDeclaredMethod("confirmWifiOn").apply { isAccessible = true }.invoke(activity)
+            SetupViewModel::class.java.getDeclaredMethod("confirmWifiOn").apply { isAccessible = true }.invoke(activity.model)
+            activity.model.writing!!.join()
             assertEquals(1, encryptionAttempts)
             assertEquals("WifiOn", state<Any>(activity, "screen").toString())
             assertEquals(R.string.wifi_on_store_before_setup_failed, state<Int?>(activity, "profileError"))
-            assertNull(field(activity, "writing"))
+            assertEquals(true, activity.model.writing?.isCompleted)
         } finally {
             controller.destroy()
             Dispatchers.resetMain()
@@ -218,15 +219,15 @@ class MainActivityRecoveryTest {
             setState(activity, "savedProfile", credentials)
             setState(activity, "profileSaved", true)
             setScreen(activity, "ResetGuide")
-            val restore = MainActivity::class.java.getDeclaredMethod("restoreHelpReturn", String::class.java)
+            val restore = SetupViewModel::class.java.getDeclaredMethod("restoreHelpReturn", String::class.java)
                 .apply { isAccessible = true }
-            restore.invoke(activity, "WifiOnResult")
+            restore.invoke(activity.model, "WifiOnResult")
             invoke(activity, "closeHelp")
             assertEquals("WifiOnResult", state<Any>(activity, "screen").toString())
             assertEquals(credentials, state<Profile>(activity, "profile"))
             setState<Profile?>(activity, "savedProfile", null)
             setScreen(activity, "ResetGuide")
-            restore.invoke(activity, "WifiOnResult")
+            restore.invoke(activity.model, "WifiOnResult")
             invoke(activity, "closeHelp")
             assertEquals("Home", state<Any>(activity, "screen").toString())
             assertNull(field(activity, "writing"))
@@ -234,7 +235,17 @@ class MainActivityRecoveryTest {
     }
 
     private fun invoke(activity: MainActivity, method: String) {
-        MainActivity::class.java.getDeclaredMethod(method).apply { isAccessible = true }.invoke(activity)
+        SetupViewModel::class.java.getDeclaredMethod(method).apply { isAccessible = true }.invoke(activity.model)
+    }
+
+    private fun assertUnsentScreen(screen: String) {
+        val controller = Robolectric.buildActivity(MainActivity::class.java).create(Bundle().apply {
+            putString("screen", screen)
+        })
+        try {
+            assertEquals("WifiOn", controller.get().model.screen.name)
+            assertNull(controller.get().model.writing)
+        } finally { controller.destroy() }
     }
 
     private fun assertInterruptedScreen(screen: String) {
@@ -277,10 +288,12 @@ class MainActivityRecoveryTest {
     }
 
     private fun field(activity: MainActivity, name: String): Any? =
-        MainActivity::class.java.getDeclaredField(name).apply { isAccessible = true }.get(activity)
+        if (name == "confirmedConnection") activity.model.confirmedConnection
+        else SetupViewModel::class.java.getDeclaredField(name).apply { isAccessible = true }.get(activity.model)
 
     private fun setField(activity: MainActivity, name: String, value: Any) {
-        MainActivity::class.java.getDeclaredField(name).apply { isAccessible = true }.set(activity, value)
+        if (name == "confirmedConnection") activity.model.confirmedConnection = value as StarlinkConnection
+        else SetupViewModel::class.java.getDeclaredField(name).apply { isAccessible = true }.set(activity.model, value)
     }
 
     @Suppress("UNCHECKED_CAST")

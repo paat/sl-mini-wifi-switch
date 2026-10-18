@@ -50,6 +50,14 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] JVM/Compose coverage and light/dark/200% guide/help/wait screenshots in `docs/screenshots/m4/`
 - [ ] Human field checks: TalkBack walkthrough, sunlight/glove readability, reduced motion and illustration accuracy, Quick Settings tile and shortcut on real phones (TESTING.md M4)
 
+## Robustness follow-up (#11, #14, #17)
+
+- [x] Conservative state/write evidence, network fallback and bounded DHCP readiness
+- [x] Retained verification across rotation/backgrounding; fresh reads before returning to Confirm
+- [x] Last-known Details, saved password access from Home, explicit read-only reconnect retry
+- [x] IO profile persistence, plain input rules, regression tests and affected light/dark screenshots
+- [ ] Human lifecycle/reconnect checks below the M2/M3 procedures in TESTING.md
+
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found

@@ -19,6 +19,7 @@ class WifiOffFlowTest {
     private var now = 0L
     private val fake = FakeTransport()
     private var wifiPresent = true
+    private var requestWritten = false
     private var addresses = listOf("100.64.0.1")
     private var beforeProbe: () -> Unit = {}
     private val budgets = mutableListOf<Long>()
@@ -59,6 +60,7 @@ class WifiOffFlowTest {
         },
         wait = { now += it },
         nowMillis = { now },
+        requestWritten = { requestWritten },
     )
 
     @Test fun noRequestsBeforeConfirmationAndNoWritesForNonPendingStates() {
@@ -87,6 +89,7 @@ class WifiOffFlowTest {
     @Test fun droppedWifiWithLostSetupReplyIsLikelySuccessWithoutRetry() {
         wifiPresent = false
         fake.setupFailure = SocketTimeoutException("Reply lost")
+        requestWritten = true
         val subject = flow(WifiOffConnection.Wifi)
         repeat(2) {
             assertEquals(WifiOffOutcome.Success(true), runCall { subject.confirm(MiniState.SetupPending) })
@@ -104,6 +107,7 @@ class WifiOffFlowTest {
     }
 
     @Test fun statusSevenIsRefusedEvenIfWifiDrops() {
+        requestWritten = true
         fake.setupReply = HttpResponse(200, mapOf("grpc-status" to "7"), byteArrayOf())
         wifiPresent = false
         assertEquals(WifiOffOutcome.Failure(WifiOffError.Refused), runCall { flow(WifiOffConnection.Wifi).confirm(MiniState.SetupPending) })
@@ -160,9 +164,49 @@ class WifiOffFlowTest {
         assertEquals(4, fake.writes)
     }
 
-    @Test fun unavailableAddressStillAllowsSilentRouterAndReachableDishEvidence() {
+    @Test fun unavailableAddressOnlyAllowsLikelySuccessAfterConfirmedWrite() {
         addresses = emptyList()
-        assertEquals(WifiOffOutcome.Success(false), runCall { flow().confirm(MiniState.SetupPending) })
+        assertEquals(WifiOffOutcome.Success(true), runCall { flow().confirm(MiniState.SetupPending) })
+    }
+
+    @Test fun unavailableAddressWithWrittenRequestAndLostReplyAllowsOnlyLikelySuccess() {
+        addresses = emptyList()
+        requestWritten = true
+        fake.setupFailure = IOException("Reply lost after body was sent")
+        assertEquals(WifiOffOutcome.Success(true), runCall { flow().confirm(MiniState.SetupPending) })
+        assertEquals(1, fake.writes)
+    }
+
+    @Test fun unavailableAddressAndUnsentWriteCannotClaimLikelySuccess() {
+        addresses = emptyList()
+        fake.setupFailure = IOException("Connect failed before request body")
+        assertEquals(WifiOffOutcome.Failure(WifiOffError.CantReach), runCall { flow().confirm(MiniState.SetupPending) })
+        assertEquals(1, fake.writes)
+    }
+
+    @Test fun wifiLossAfterUnsentWriteDoesNotClaimLikelySuccessOrRetry() {
+        wifiPresent = false
+        fake.setupFailure = IOException("Connect failed before request body")
+        val subject = flow(WifiOffConnection.Wifi)
+        repeat(2) {
+            assertEquals(WifiOffOutcome.Failure(WifiOffError.CantReach), runCall { subject.confirm(MiniState.SetupPending) })
+        }
+        assertEquals(1, fake.writes)
+    }
+
+    @Test fun replacementSetupWifiPreventsLikelySuccessEvenAfterSuccessfulReply() {
+        // The observation includes any replacement STARLINK handle, not only the original one.
+        wifiPresent = true
+        assertEquals(WifiOffOutcome.Failure(WifiOffError.CantReach), runCall {
+            flow(WifiOffConnection.Wifi).confirm(MiniState.SetupPending)
+        })
+        assertEquals(1, fake.writes)
+    }
+
+    @Test fun verificationReadExposesFreshDishDetails() {
+        val observed = runCall { probeWifiOff(fake, "192.168.1.1", true, addresses) }
+        assertEquals("mini", observed.dishInfo?.hardwareVersion)
+        assertTrue(observed.dishReachable)
     }
 
     @Test fun anyRouterResponsePreventsClaimingEthernetSuccess() {
@@ -212,6 +256,19 @@ class WifiOffFlowTest {
         })
         assertEquals(WifiOffOutcome.Failure(WifiOffError.CantReach), runCall { subject.confirm(MiniState.SetupPending) })
         assertEquals(1, fake.writes)
+    }
+
+    @Test fun lateVerificationCannotClaimCertainOrLikelySuccess() {
+        fake.onSetup = { now += 59_000 }
+        beforeProbe = { now += 2_000 }
+        wifiPresent = false
+        for (connection in WifiOffConnection.entries) {
+            assertEquals(connection.name, WifiOffOutcome.Failure(WifiOffError.CantReach), runCall {
+                flow(connection).confirm(MiniState.SetupPending)
+            })
+        }
+        assertEquals(2, fake.writes)
+        assertEquals(listOf(1_000L, 1_000L), budgets)
     }
 
     @Test fun absentNetworkProbeSendsNothing() {
