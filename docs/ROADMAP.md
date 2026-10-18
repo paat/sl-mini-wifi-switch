@@ -67,6 +67,7 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 ## PR #18 tribunal round 2
 
 - [x] Keep setup evidence after profile-save failure so retry can send once (T-001)
+- [x] Consume quick-launch actions so rotation keeps guide and error screens (T-002)
 
 ## M5: Release
 

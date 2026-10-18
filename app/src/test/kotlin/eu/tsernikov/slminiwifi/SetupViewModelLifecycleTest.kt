@@ -59,6 +59,34 @@ class SetupViewModelLifecycleTest {
             android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 0f)
     }
 
+    @Test fun consumedQuickLaunchKeepsGuideAndErrorOnRotation() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            for (screen in listOf(Screen.FieldGuide, Screen.WifiOffError)) {
+                val controller = Robolectric.buildActivity(MainActivity::class.java,
+                    SetupLaunch.intent(application)).create().start().resume()
+                try {
+                    val model = controller.get().model
+                    assertNull(controller.get().intent.action)
+                    model.screen = screen
+                    model.guideStep = eu.tsernikov.slminiwifi.ui.GuideStep.AndroidConnect
+                    controller.recreate()
+                    assertSame(model, controller.get().model)
+                    assertEquals(screen, model.screen)
+                    assertEquals(eu.tsernikov.slminiwifi.ui.GuideStep.AndroidConnect, model.guideStep)
+                    // A fresh quick-launch intent still opens Home, and is consumed too.
+                    controller.newIntent(SetupLaunch.intent(controller.get()))
+                    assertEquals(Screen.Home, model.screen)
+                    assertNull(controller.get().intent.action)
+                    model.screen = screen
+                    controller.recreate()
+                    assertEquals(screen, model.screen)
+                    assertNull(model.writing)
+                } finally { controller.pause().stop().destroy() }
+            }
+        } finally { Dispatchers.resetMain() }
+    }
+
     @Test fun rotationRetainsBothConfirmationScreensAndUnsavedCredentialsWithoutAWrite() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {

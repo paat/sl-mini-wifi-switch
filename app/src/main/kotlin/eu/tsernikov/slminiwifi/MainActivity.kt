@@ -161,7 +161,10 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleSetupLaunch(intent: Intent) {
-        if (intent.action == SetupLaunch.ACTION) model.openFromQuickLaunch()
+        if (intent.action == SetupLaunch.ACTION) {
+            intent.action = null
+            model.openFromQuickLaunch()
+        }
     }
 
     override fun onStart() {
