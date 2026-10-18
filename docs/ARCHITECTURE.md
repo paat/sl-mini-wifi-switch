@@ -41,6 +41,8 @@ Probe order: Ethernet first (survives the Wi-Fi switching off), then setup Wi-Fi
 ```
 Home ─ detect state ─┬─ SetupPending ─▶ choose: [Wi-Fi off] or [Secure Wi-Fi (profile)]
                      │                     └─ confirm screen ─▶ send wifi_setup ─▶ verify ─▶ result
+                     │                          result, Wi-Fi off: "connect the Mini to your router's WAN port"
+                     │                          result, Wi-Fi on:  password in large type + Wi-Fi QR code
                      ├─ Configured  ─▶ show SSIDs, auth, versions; explain: "To switch, factory reset the Mini"
                      ├─ Bypass      ─▶ show dish status; explain the same
                      ├─ Rebooting   ─▶ wait with progress (poll every 3 s, up to 3 min)

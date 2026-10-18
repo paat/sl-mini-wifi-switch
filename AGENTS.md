@@ -1,10 +1,12 @@
 # Guide for coding agents
 
-You are taking over an Android project that so far exists only as documentation. Read this file, then [docs/PROTOCOL.md](docs/PROTOCOL.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/ROADMAP.md](docs/ROADMAP.md). Start with milestone M0 in the roadmap.
+You are taking over an Android project that so far exists only as documentation. Read this file, then [docs/UX.md](docs/UX.md), [docs/PROTOCOL.md](docs/PROTOCOL.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/ROADMAP.md](docs/ROADMAP.md). Start with milestone M0 in the roadmap.
 
 ## Goal
 
 One Android app with one job: right after a Starlink Mini factory reset, finish its setup in either **bypass** (Wi-Fi off) or **secure Wi-Fi** (name and password), reached over the Mini's open setup Wi-Fi or over Ethernet. Plus a read-only status screen.
+
+The users are **non-technical people in the field**. The app must be foolproof and guide every physical step with illustrations. [docs/UX.md](docs/UX.md) is binding: a screen that doesn't meet it isn't done.
 
 ## Non-goals
 
@@ -21,7 +23,8 @@ One Android app with one job: right after a Starlink Mini factory reset, finish 
 4. **The protocol layer stays pure Kotlin with no Android imports**, so it runs in JVM unit tests against [tools/vectors/](tools/vectors/).
 5. **Don't ship SpaceX's full protobuf schema.** The repo uses its own minimal subset ([proto/sl_mini_subset.proto](proto/sl_mini_subset.proto)) with only the field numbers this app needs. Field numbers are facts observed on the device; keep it that way.
 6. **No network calls outside the local Starlink addresses** (`192.168.1.1`, `192.168.100.1`, and the router address found via DHCP). No analytics, no crash reporting services.
-7. **Never log or display a stored Wi-Fi password** after it is entered. Store it only with Android Keystore-backed encryption.
+7. **Never log a Wi-Fi password.** Store it only with Android Keystore-backed encryption. Show it only where [docs/UX.md](docs/UX.md) says to (behind a show/hide toggle, on the result screen, and as a Wi-Fi QR code).
+8. **No technical terms in the main interface** (bypass, subnet, gRPC, API, setup request). See the wording rules in [docs/UX.md](docs/UX.md).
 
 ## Conventions
 
@@ -36,6 +39,7 @@ One Android app with one job: right after a Starlink Mini factory reset, finish 
 
 - Builds with `./gradlew build` and passes `./gradlew test` on a clean checkout.
 - New behaviour is covered by unit tests where it can be.
+- New screens meet [docs/UX.md](docs/UX.md): plain wording, illustration for every physical step, no dead ends, field-condition sizes. Include phone screenshots (light and dark) in the PR.
 - Docs updated: ROADMAP.md (tick the task), FINDINGS.md if hardware facts changed, PROTOCOL.md if messages changed.
 - Anything that needs a hardware test is listed in the PR description with the exact steps from TESTING.md.
 

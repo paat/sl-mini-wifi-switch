@@ -27,13 +27,18 @@ So every switch starts with a factory reset (press the reset icon on the back of
 
 The phone reaches the Mini either over its **open setup Wi-Fi** or over **Ethernet** (USB-C Ethernet adapter on the phone, cable to the Mini's port).
 
-What this app can't do, because the router refuses it: turn Wi-Fi off while keeping the router on, or change anything on an already configured Mini. Both were tested (see findings).
+What this app can't do, because the router refuses it: turn Wi-Fi off while keeping the router on, change the local network range (subnet; it is always 192.168.1.x after a reset), or change anything on an already configured Mini. All were tested (see findings).
+
+## Built for non-technical users
+
+The app must be foolproof and usable in the field by people with no technical background, with illustrated step-by-step guides for every physical step (resetting the Mini, connecting a cable). The requirements are in [docs/UX.md](docs/UX.md).
 
 ## Documentation
 
 | File | Contents |
 |---|---|
 | [AGENTS.md](AGENTS.md) | Start here if you are a coding agent: goals, rules, where to begin |
+| [docs/UX.md](docs/UX.md) | User experience requirements: foolproof, non-technical, visual guides |
 | [docs/PROTOCOL.md](docs/PROTOCOL.md) | Local API: transport, framing, message and field numbers, errors |
 | [docs/FINDINGS.md](docs/FINDINGS.md) | What was tested on real hardware, with results |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Planned Android app design |

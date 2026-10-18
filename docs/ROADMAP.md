@@ -20,8 +20,9 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 
 ## M2: Wi-Fi off (bypass)
 
-- [ ] Confirm screen that states the consequences
+- [ ] Confirm screen that states the consequences (UX.md, Wi-Fi off specifics)
 - [ ] Send `wifi_setup{bypass}` and verify as described in ARCHITECTURE.md
+- [ ] Result screen: connect the Mini's cable to the router's internet (WAN) port, with illustration; how to undo
 - [ ] Hardware test by a human, over Ethernet and over the setup Wi-Fi
 
 ## M3: Secure Wi-Fi
@@ -29,18 +30,24 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Hardware-test `network_password` (FINDINGS.md test 10: works, WPA2/WPA3)
 - [x] Hardware-test a client joining with the scripted password (FINDINGS.md test 11)
 - [ ] Hardware-test password limits (min/max length, special characters)
-- [ ] Profile storage with Keystore-backed encryption
+- [ ] Profile storage with Keystore-backed encryption; "Use the same Wi-Fi as last time"
+- [ ] Generated password by default, show/hide toggle, own-password option
 - [ ] Send `wifi_setup{network_name, network_password}`, verify `setup_complete` and auth type
-- [ ] Input validation matching what the device accepts
+- [ ] Input validation matching what the device accepts, rules shown before typing
+- [ ] Result screen with the password in large type and a Wi-Fi QR code
 
-## M4: Field use
+## M4: Field use and visual guides
 
+- [ ] Illustrations drawn for the project (vector / animated vector drawables) for every physical step in UX.md: reset symbol location and press, light behaviour, cable and adapter, joining STARLINK, router WAN port
+- [ ] Guided step-by-step flow from the home screen, using those illustrations
 - [ ] Quick Settings tile and app shortcut into the pending-setup action
 - [ ] Offline help screen with the reset steps
 - [ ] Clear progress and timeouts during the 1–2 minute reboots
+- [ ] Field-condition checks: 200% font size, sunlight contrast, TalkBack, 64 dp primary buttons
 
 ## M5: Release
 
+- [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found
 - [ ] App icon, screenshots, F-Droid metadata
 - [ ] Signed release builds via GitHub Releases
 - [ ] Make the repository public

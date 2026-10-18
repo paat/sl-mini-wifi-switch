@@ -69,6 +69,8 @@ Names below are ours, field numbers are the device's. Full schema: [proto/sl_min
 | network_password | 3 | string | Wi-Fi password (**verified**: results in `auth_wpa2_wpa3` on both bands; limits untested) |
 | bypass | 4 | bool | Bypass mode: Wi-Fi and router off (**verified**) |
 
+There is no subnet field. The LAN stays `192.168.1.0/24` after setup; changing it needs `wifi_set_config`, which is refused (FINDINGS.md test 9), so only the official app can change it.
+
 ### Response (`SpaceX.API.Device.Response`)
 
 | Field | No. | Type |
