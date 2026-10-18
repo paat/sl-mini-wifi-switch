@@ -1,3 +1,1 @@
-First version of Mini Wi-Fi Switch.
-
-The app has its icon and a short opening screen. The guided setup steps come later. It works offline and does not track you.
+First version. Check the Mini, turn its Wi-Fi off, or turn Wi-Fi on with your own name and password. A QR code is shown and your phone joins that Wi-Fi. Picture guides, a Quick Settings tile, and offline reset help are included. Works offline and does not track you. Tested on one Starlink Mini; some steps still need more real-world testing.

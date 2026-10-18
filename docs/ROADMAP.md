@@ -77,8 +77,9 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] App icon
 - [ ] Screenshots
 - [x] F-Droid metadata
-- [ ] Signed release builds via GitHub Releases
-- [ ] Make the repository public
+- [x] Signed release builds via GitHub Releases
+- [x] Make the repository public
+- [ ] v0.1.0 pre-release published (tag v0.1.0)
 
 ## Open questions
 
