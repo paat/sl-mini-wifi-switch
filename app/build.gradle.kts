@@ -26,6 +26,7 @@ android {
             it.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
             it.systemProperty("m1.screenshots.dir", rootProject.file("docs/screenshots/m1").absolutePath)
             it.systemProperty("m2.screenshots.dir", rootProject.file("docs/screenshots/m2").absolutePath)
+            it.systemProperty("m3.screenshots.dir", rootProject.file("docs/screenshots/m3").absolutePath)
             it.maxHeapSize = "2g"
         }
     }
@@ -42,6 +43,7 @@ kotlin {
 
 dependencies {
     implementation(project(":protocol"))
+    implementation(libs.zxing.core)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)

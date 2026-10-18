@@ -191,6 +191,41 @@ class StarlinkNetworksTest {
         assertTrue(shadow.networkCallbacks.isEmpty())
     }
 
+    @Test fun secureRequestReplacesSetupRequestAndCanVerifyNewNetwork() = runTest {
+        val setup = async(start = CoroutineStart.UNDISPATCHED) { networks.requestStarlink() }
+        val setupCallback = shadow.networkCallbacks.single()
+        val secure = async(start = CoroutineStart.UNDISPATCHED) {
+            networks.requestSecureWifi("Mini-field", "TestPassword23")
+        }
+        assertNull(setup.await())
+        assertEquals(1, shadow.networkCallbacks.size)
+        assertFalse(setupCallback in shadow.networkCallbacks)
+        val callback = shadow.networkCallbacks.single()
+        val wifi = addNetwork(1, NetworkCapabilities.TRANSPORT_WIFI, "Mini-field")
+        callback.onAvailable(wifi)
+        callback.onLinkPropertiesChanged(wifi, LinkProperties())
+        assertEquals(wifi, secure.await()?.network)
+        assertEquals(wifi, networks.findAvailable()?.network)
+        networks.releaseRequest()
+        assertTrue(shadow.networkCallbacks.isEmpty())
+        // A remembered arbitrary Wi-Fi name cannot enter the setup discovery path.
+        assertNull(networks.findAvailable())
+    }
+
+    @Test fun secureRequestRejectsEmptyPasswordBeforeRequestingOpenNetwork() = runTest {
+        val failure = runCatching { networks.requestSecureWifi("Mini-field", "") }.exceptionOrNull()
+        assertTrue(failure is IllegalArgumentException)
+        assertTrue(shadow.networkCallbacks.isEmpty())
+    }
+
+    @Test fun savedProfileRecoverySelectsOnlyItsExactWifiName() {
+        addNetwork(1, NetworkCapabilities.TRANSPORT_WIFI, "Other Wi-Fi")
+        assertNull(networks.findWifi("Mini-field"))
+        val saved = addNetwork(2, NetworkCapabilities.TRANSPORT_WIFI, "Mini-field")
+        assertEquals(saved, networks.findWifi("Mini-field")?.network)
+        assertNull(networks.findAvailable())
+    }
+
     @Test fun releaseCompletesPendingRequestWithoutAConnection() = runTest {
         val request = async(start = CoroutineStart.UNDISPATCHED) { networks.requestStarlink() }
         networks.releaseRequest()

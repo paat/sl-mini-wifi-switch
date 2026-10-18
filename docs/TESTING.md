@@ -84,3 +84,55 @@ Run the following twice, with a fresh physical factory reset before **each** run
    app. Record date, dish/router firmware, response status (or lost response), timing,
    and exact observations in FINDINGS.md. These M2 app checks remain unperformed
    until a human records them; the earlier protocol-only Ethernet test is not a substitute.
+
+### M3 app: Name + password and auto-connect (human only)
+
+These checks remain unperformed. A human must keep the Mini within reach. Run the
+Name + password check over **Ethernet and the open STARLINK Wi-Fi**, with a fresh
+physical factory reset before each write. Do not also send the curl vector.
+
+1. Connect the phone by USB-C Ethernet adapter, or disconnect Ethernet and join
+   STARLINK (including Android's Connect confirmation if requested).
+2. Press the reset icon on the back until it clicks, hold about 3 seconds until
+   the LED blinks fast and goes off. Wait for `192.168.1.1` to answer (35–110 seconds
+   observed), with `setup_complete` false and “Your Mini is ready” in the app.
+3. Choose **Wi-Fi on with password**. Check the generated name/password, show/hide,
+   own-password option, and rules before typing. Cancel the confirmation first:
+   STARLINK must stay open and setup must remain pending. Reopen, review the name,
+   restart and reset-to-undo explanation, then tap **Turn Wi-Fi on** exactly once.
+4. This is the **Name + password** write from the table above. Record status or lost
+   response. Expect visible 1–2 minute progress, no duplicate write, and up to 3
+   minutes of read-only verification. Over Wi-Fi, accept Android's Connect dialog
+   for the new name. Verify `setup_complete` and secure auth on **every** BSS
+   (WPA2/WPA3 observed previously); do not compare the masked read-back password.
+5. Check the result name/password and scan the QR with a second phone. Join using
+   both the QR and typed password. Reopen the app and, after another physical reset,
+   check **Use the same Wi-Fi as last time** restores the correct credentials.
+   Confirm that app private storage contains only the encrypted profile blob.
+6. On a real **API 30+** phone, the connection explanation opens after success.
+   Continue to Android and tap **Save** once (or use Back to view the password/QR,
+   then **Join on this phone** to reopen the explanation). Check that the temporary STARLINK/new
+   Wi-Fi request has been released, the network is saved in phone settings, and the
+   phone joins automatically. Close the app and confirm the saved network remains.
+   Exercise Cancel/declined and an already-saved name; messages must match and the
+   QR/password must remain available. Check old-password guidance for an existing
+   network. Android may avoid a no-internet network; record any manual selection needed.
+7. If available, repeat on a real **API 29** phone. Allow the Wi-Fi suggestion
+   notification and check automatic joining. Refuse the notification once and check
+   the password/QR fallback. Record phone model, Android version and approval steps.
+8. Separately test provisional limits, with a fresh reset for each accepted write:
+   names of 1 and 32 UTF-8 bytes (including multibyte names), passwords of 8 and 63
+   printable ASCII characters, spaces and symbols (especially `\ ; , : "`). Confirm
+   the second phone joins and QR escaping works. In the app, 0/33-byte names,
+   7/64-character passwords, non-ASCII passwords and control characters must keep
+   Review disabled. Testing device acceptance of rejected boundary values requires
+   a separate human-run protocol test; record actual device limits before changing
+   the provisional rules. Never record real passwords in logs or FINDINGS.md.
+9. Interrupt verification, decline temporary Connect, or leave the Mini unreachable
+   for 3 minutes. Expect reconnect guidance and **no automatic repeat write**.
+   Reconnect by cable or manually join the new saved-profile Wi-Fi and check again.
+   Rotate/recreate the activity during confirmation/progress: no write may resume.
+10. Restore the desired state with a physical reset plus setup or the official app.
+    Record date, dish/router firmware, connection path, phone/Android version,
+    response status, timing, auth on each BSS, boundary results and auto-connect
+    observations in FINDINGS.md. Do not tick hardware boxes until these tests run.

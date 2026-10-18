@@ -7,7 +7,7 @@ An open-source Android app that switches a **Starlink Mini** between two field m
 | **Wi-Fi off** (bypass) | Built-in Wi-Fi and router are off. The Ethernet port hands one wired device an internet address straight from Starlink. | Semi-permanent spot where you want a small RF footprint. |
 | **Secure Wi-Fi** | Built-in router on, Wi-Fi with your own name and password. | Quick stop: power bank in, phone or laptop on Wi-Fi, pack up. |
 
-> **Status: pre-alpha, read-only app (M1).** The app finds the Mini over Ethernet or STARLINK Wi-Fi, shows its state and device details, and never sends a write. The two setup choices show a next-version preview. Setup writes have been verified separately by a human (see [docs/FINDINGS.md](docs/FINDINGS.md)); app hardware checks remain pending.
+> **Status: pre-alpha, M3 software implemented.** The app finds the Mini, shows read-only details, and offers Wi-Fi off or Wi-Fi on with a password only while setup is pending. Every setup write requires an explicit confirmation and is sent once. Secure Wi-Fi includes encrypted profile reuse, a password/QR result, and Android network saving. Protocol writes were verified separately by a human (see [docs/FINDINGS.md](docs/FINDINGS.md)); app hardware checks and password-limit checks remain pending.
 
 ## Build
 
@@ -25,20 +25,26 @@ Record the phone screenshots with Robolectric and Roborazzi (JVM; no emulator or
 ./gradlew --no-daemon :app:recordRoborazziDebug --tests '*ScreenshotsTest'
 ```
 
-The task writes committed PNGs to [`docs/screenshots/m1/`](docs/screenshots/m1/):
-all five Home states, Details, and both setup previews in light and dark themes,
-plus a 200% font-size case. Long connection/Details screens include scrolled views.
+The task writes committed PNGs to [`docs/screenshots/m1/`](docs/screenshots/m1/),
+[`docs/screenshots/m2/`](docs/screenshots/m2/), and [`docs/screenshots/m3/`](docs/screenshots/m3/).
+M3 includes generated/own-password setup with and without a saved profile, 200% setup
+fonts, confirmation, progress, password/QR results and Android connection explanations
+in light and dark themes. Long screens include scrolled views. See the
+[M3 PNG list](docs/screenshots/m3/manifest.txt) and [test counts](docs/screenshots/m3/verification.txt).
 Normal `build test` runs render and action assertions without recording or comparing
 pixels, so CI font differences do not fail the suite. App unit tests run on the JVM; screenshot tests use a debug-only Compose host.
 
 The app uses sockets on the selected network, with no process-wide binding,
 DNS lookups, redirects, proxies, analytics, or remote services. It reads only
-`wifi_get_config`, `get_device_info`, and router `get_status`. Android may ask
+`wifi_get_config`, `get_device_info`, and router `get_status`; confirmed setup sends
+`wifi_setup` once. Android may ask
 for permission to connect to local devices (Android 17+), nearby Wi-Fi devices
 (Android 13+), or location to identify the existing STARLINK network. Location
 services may need to be enabled for Wi-Fi identification on the phone; no
 physical location is collected. Permission denial has a phone-settings recovery
-button, and app-local Wi-Fi requests are released when the app leaves the foreground.
+button. App-local Wi-Fi requests are released on leaving the foreground except
+during bounded secure setup verification, so Android’s Connect dialog can complete.
+Verification releases the temporary connection before system-wide network saving.
 
 The `:protocol` module is pure Kotlin/JVM; `:app` is the Android Compose app.
 Dependency, plugin, and SDK versions live in `gradle/libs.versions.toml`; the
