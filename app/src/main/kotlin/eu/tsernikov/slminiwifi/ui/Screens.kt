@@ -145,9 +145,9 @@ fun HomeScreen(
 }
 
 @Composable
-fun ComingSoonScreen(wifiOff: Boolean, onBack: () -> Unit) {
+fun ComingSoonScreen(onBack: () -> Unit) {
     Screen {
-        Heading(stringResource(if (wifiOff) R.string.wifi_off else R.string.wifi_secure))
+        Heading(stringResource(R.string.wifi_secure))
         Text(stringResource(R.string.coming_soon), style = MaterialTheme.typography.bodyLarge)
         PrimaryButton(R.string.back, onBack)
     }
@@ -219,7 +219,7 @@ private fun Value(@StringRes label: Int, value: String?) {
 }
 
 @Composable
-private fun Screen(content: @Composable ColumnScope.() -> Unit) {
+internal fun Screen(content: @Composable ColumnScope.() -> Unit) {
     Surface(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.safeDrawingPadding(), contentAlignment = Alignment.TopCenter) {
             Column(
@@ -233,7 +233,7 @@ private fun Screen(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun Heading(text: String) {
+internal fun Heading(text: String) {
     Text(text, modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineLarge)
 }
 
@@ -243,7 +243,7 @@ private fun Subheading(text: String) {
 }
 
 @Composable
-private fun PrimaryButton(@StringRes label: Int, onClick: () -> Unit, enabled: Boolean = true) {
+internal fun PrimaryButton(@StringRes label: Int, onClick: () -> Unit, enabled: Boolean = true) {
     Button(
         onClick = onClick,
         enabled = enabled,
@@ -253,7 +253,7 @@ private fun PrimaryButton(@StringRes label: Int, onClick: () -> Unit, enabled: B
 }
 
 @Composable
-private fun SecondaryButton(@StringRes label: Int, onClick: () -> Unit, enabled: Boolean = true) {
+internal fun SecondaryButton(@StringRes label: Int, onClick: () -> Unit, enabled: Boolean = true) {
     OutlinedButton(
         onClick = onClick,
         enabled = enabled,
@@ -263,7 +263,7 @@ private fun SecondaryButton(@StringRes label: Int, onClick: () -> Unit, enabled:
 }
 
 @Composable
-private fun GuideCard(content: @Composable ColumnScope.() -> Unit) {
+internal fun GuideCard(content: @Composable ColumnScope.() -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
@@ -278,7 +278,7 @@ private fun GuideCard(content: @Composable ColumnScope.() -> Unit) {
 
 /** Original layered vectors: the adapter slides toward the phone's USB-C socket. */
 @Composable
-private fun CableIllustration(animate: Boolean) {
+internal fun CableIllustration(animate: Boolean) {
     val description = stringResource(R.string.cable_description)
     val progress = if (animate) {
         val transition = rememberInfiniteTransition(label = "cable insertion")

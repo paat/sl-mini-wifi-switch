@@ -16,7 +16,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import eu.tsernikov.slminiwifi.net.OkHttpTransport
+import eu.tsernikov.slminiwifi.net.StarlinkConnection
 import eu.tsernikov.slminiwifi.net.StarlinkNetworks
+import eu.tsernikov.slminiwifi.protocol.MiniClient
+import eu.tsernikov.slminiwifi.state.WifiOffConnection
+import eu.tsernikov.slminiwifi.state.WifiOffError
+import eu.tsernikov.slminiwifi.state.WifiOffFlow
+import eu.tsernikov.slminiwifi.state.WifiOffObservation
+import eu.tsernikov.slminiwifi.state.WifiOffOutcome
+import eu.tsernikov.slminiwifi.state.probeWifiOff
+import eu.tsernikov.slminiwifi.ui.WifiOffConfirmScreen
+import eu.tsernikov.slminiwifi.ui.WifiOffProgressScreen
+import eu.tsernikov.slminiwifi.ui.WifiOffResultScreen
+import eu.tsernikov.slminiwifi.ui.WifiOffErrorScreen
+import eu.tsernikov.slminiwifi.ui.ResetGuideScreen
 import eu.tsernikov.slminiwifi.state.MiniSnapshot
 import eu.tsernikov.slminiwifi.state.MiniState
 import eu.tsernikov.slminiwifi.state.MiniStateDetector
@@ -35,9 +48,9 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** Owns only foreground, app-local connections. Every Mini operation is a read. */
+/** Owns foreground, app-local connections. Writes require a separate confirmation tap. */
 class MainActivity : ComponentActivity() {
-    private enum class Screen { Home, Details, WifiOff, WifiOn }
+    private enum class Screen { Home, Details, WifiOff, WifiOffProgress, WifiOffResult, WifiOffError, ResetGuide, WifiOn }
     private enum class PermissionAction { Check, Connect }
 
     private lateinit var networks: StarlinkNetworks
@@ -45,6 +58,14 @@ class MainActivity : ComponentActivity() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var polling: Job? = null
     private var connecting: Job? = null
+    private var writing: Job? = null
+    private var detectedConnection: StarlinkConnection? = null
+    private var confirmedConnection: StarlinkConnection? = null
+    private var confirmedInterface: String? = null
+    private var confirmationIsWifi by mutableStateOf(false)
+    private var wifiOffError by mutableStateOf(WifiOffError.CantReach)
+    private var likelySuccess by mutableStateOf(false)
+    private var detailsReturn = Screen.Home
     private var foreground = false
     private var pendingPermissionAction = PermissionAction.Check
     private var snapshot by mutableStateOf(MiniSnapshot(MiniState.NotFound))
@@ -76,10 +97,28 @@ class MainActivity : ComponentActivity() {
         screen = savedInstanceState?.getString("screen")?.let { name ->
             Screen.entries.firstOrNull { it.name == name }
         } ?: Screen.Home
+        wifiOffError = savedInstanceState?.getString("wifiOffError")?.let { name ->
+            WifiOffError.entries.firstOrNull { it.name == name }
+        } ?: WifiOffError.CantReach
+        // Never restore a send or stale confirmation after process/activity recreation.
+        if (screen == Screen.WifiOff || screen == Screen.WifiOffProgress) {
+            screen = Screen.WifiOffError
+            wifiOffError = WifiOffError.CantReach
+        }
+        likelySuccess = savedInstanceState?.getBoolean("likelySuccess") ?: false
+        detailsReturn = if (savedInstanceState?.getBoolean("detailsFromResult") == true) {
+            Screen.WifiOffResult
+        } else Screen.Home
         enableEdgeToEdge()
         setContent {
             MiniTheme {
-                BackHandler(enabled = screen != Screen.Home) { screen = Screen.Home }
+                BackHandler(enabled = screen != Screen.Home) {
+                    if (screen != Screen.WifiOffProgress) {
+                        if (screen == Screen.Details && detailsReturn == Screen.WifiOffResult) {
+                            screen = Screen.WifiOffResult
+                        } else returnHome()
+                    }
+                }
                 when (screen) {
                     Screen.Home -> HomeScreen(
                         snapshot = snapshot,
@@ -88,14 +127,29 @@ class MainActivity : ComponentActivity() {
                         message = message,
                         onRefresh = { requestAccess(PermissionAction.Check) },
                         onConnect = { requestAccess(PermissionAction.Connect) },
-                        onDetails = { screen = Screen.Details },
-                        onSetupChoice = { wifiOff -> screen = if (wifiOff) Screen.WifiOff else Screen.WifiOn },
+                        onDetails = { detailsReturn = Screen.Home; screen = Screen.Details },
+                        onSetupChoice = { wifiOff ->
+                            if (snapshot.state == MiniState.SetupPending) {
+                                if (wifiOff) openWifiOff() else screen = Screen.WifiOn
+                            }
+                        },
                         onPermissions = if (permissionDenied) ({
                             startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
                         }) else null,
                     )
-                    Screen.Details -> DetailsScreen(snapshot.details) { screen = Screen.Home }
-                    Screen.WifiOff, Screen.WifiOn -> ComingSoonScreen(screen == Screen.WifiOff) { screen = Screen.Home }
+                    Screen.Details -> DetailsScreen(snapshot.details) {
+                        if (detailsReturn == Screen.WifiOffResult) screen = Screen.WifiOffResult else returnHome()
+                    }
+                    Screen.WifiOn -> ComingSoonScreen { returnHome() }
+                    Screen.WifiOff -> WifiOffConfirmScreen(confirmationIsWifi, ::confirmWifiOff, ::returnHome)
+                    Screen.WifiOffProgress -> WifiOffProgressScreen()
+                    Screen.WifiOffResult -> WifiOffResultScreen(likelySuccess,
+                        onDetails = { detailsReturn = Screen.WifiOffResult; screen = Screen.Details },
+                        onDone = ::returnHome)
+                    Screen.WifiOffError -> WifiOffErrorScreen(wifiOffError, onNext = {
+                        if (wifiOffError == WifiOffError.AlreadySetUp) screen = Screen.ResetGuide else returnHome()
+                    })
+                    Screen.ResetGuide -> ResetGuideScreen(onDone = ::returnHome)
                 }
             }
         }
@@ -119,6 +173,11 @@ class MainActivity : ComponentActivity() {
         foreground = false
         polling?.cancel()
         connecting?.cancel()
+        if (screen == Screen.WifiOffProgress) {
+            writing?.cancel()
+            wifiOffError = WifiOffError.CantReach
+            screen = Screen.WifiOffError
+        }
         networks.releaseRequest()
         super.onStop()
     }
@@ -131,7 +190,85 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString("screen", screen.name)
+        outState.putString("wifiOffError", wifiOffError.name)
+        outState.putBoolean("likelySuccess", likelySuccess)
+        outState.putBoolean("detailsFromResult", detailsReturn == Screen.WifiOffResult)
         super.onSaveInstanceState(outState)
+    }
+
+    private fun returnHome() {
+        confirmedConnection = null
+        screen = Screen.Home
+        startPolling(showProgress = true)
+    }
+
+    private fun openWifiOff() {
+        val connection = detectedConnection ?: return
+        if (snapshot.state != MiniState.SetupPending || !networks.isPresent(connection)) return
+        polling?.cancel()
+        confirmedConnection = connection
+        confirmedInterface = networks.interfaceName(connection)
+        confirmationIsWifi = !networks.isEthernet(connection)
+        screen = Screen.WifiOff
+    }
+
+    private fun confirmWifiOff() {
+        if (screen != Screen.WifiOff || snapshot.state != MiniState.SetupPending) return
+        val connection = confirmedConnection
+        if (connection == null || !networks.isPresent(connection)) {
+            wifiOffError = WifiOffError.CantReach
+            screen = Screen.WifiOffError
+            return
+        }
+        // Change screen synchronously: a second tap cannot launch a second write.
+        screen = Screen.WifiOffProgress
+        snapshot = MiniSnapshot(MiniState.NotFound)
+        detectedConnection = null
+        writing = scope.launch {
+            try {
+                val outcome = OkHttpTransport(connection.network, connection.routerAddress).use { transport ->
+                    WifiOffFlow(
+                        MiniClient(transport, "http://${connection.routerAddress}:9001"),
+                        if (confirmationIsWifi) WifiOffConnection.Wifi else WifiOffConnection.Ethernet,
+                        observe = { remaining ->
+                            withTimeoutOrNull(remaining) { observeWifiOff(connection) }
+                                ?: WifiOffObservation(
+                                    originalWifiPresent = networks.isPresent(connection),
+                                    routerAnswered = true, dishReachable = false,
+                                )
+                        },
+                    ).confirm(MiniState.SetupPending)
+                }
+                when (outcome) {
+                    is WifiOffOutcome.Success -> {
+                        likelySuccess = outcome.likely
+                        screen = Screen.WifiOffResult
+                    }
+                    is WifiOffOutcome.Failure -> {
+                        wifiOffError = outcome.error
+                        screen = Screen.WifiOffError
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                wifiOffError = WifiOffError.CantReach
+                screen = Screen.WifiOffError
+            }
+        }
+    }
+
+    private suspend fun observeWifiOff(original: StarlinkConnection): WifiOffObservation {
+        val present = networks.isPresent(original)
+        if (confirmationIsWifi && !present) return WifiOffObservation(false, false, false)
+        // Ethernet may be re-created by Android after DHCP changes. Never switch to Wi-Fi.
+        val selected = if (present) original else networks.findEthernetOnInterface(confirmedInterface)
+        if (selected == null) return WifiOffObservation(present, false, false)
+        // Probe the pre-write router address, not the new Starlink upstream gateway.
+        return OkHttpTransport(selected.network, original.routerAddress).use { transport ->
+            val observation = probeWifiOff(transport, original.routerAddress, present, networks.ipv4Addresses(selected))
+            observation.copy(originalWifiPresent = networks.isPresent(original))
+        }
     }
 
     private fun granted(permission: String) = checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
@@ -188,7 +325,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startPolling(showProgress: Boolean) {
         polling?.cancel()
-        if (!foreground || requestingWifi || !hasLocalAccess()) return
+        if (!foreground || requestingWifi || !hasLocalAccess() || screen != Screen.Home) return
         polling = scope.launch {
             checking = showProgress
             try {
@@ -207,6 +344,7 @@ class MainActivity : ComponentActivity() {
                     snapshot = if (remaining == null) probe() else {
                         withTimeoutOrNull(remaining) { probe() } ?: detector.detect(null)
                     }
+                    detectedConnection = connection
                     checking = false
                     delay(minOf(MiniStateDetector.POLL_INTERVAL_MILLIS,
                         detector.rebootTimeRemainingMillis ?: MiniStateDetector.POLL_INTERVAL_MILLIS))

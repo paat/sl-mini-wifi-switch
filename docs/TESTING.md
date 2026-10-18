@@ -53,3 +53,34 @@ Factory reset: press the reset icon on the back of the Mini until it clicks, hol
 | Name + password | a frame with your own name and password | **record result in FINDINGS.md**: status, auth type |
 
 Restore the Mini to the state you want afterwards (another reset plus setup, or the official app).
+
+### M2 app: Bypass write check over both connections (human only)
+
+Run the following twice, with a fresh physical factory reset before **each** run:
+
+1. **Ethernet run:** connect the phone's USB-C Ethernet adapter to the Mini.
+   **Setup Wi-Fi run:** unplug the phone's Ethernet adapter and join `STARLINK`
+   (or use the app's Join STARLINK action and Android's Connect confirmation).
+2. Press the reset icon on the back until it clicks; hold about 3 seconds until the
+   LED blinks fast and goes off. Wait for `192.168.1.1` to answer (35–110 seconds
+   observed), with `setup_complete` false. The app must say “Your Mini is ready”.
+3. Choose Wi-Fi off. Check the no-Wi-Fi/no-local-network warning, router requirement,
+   and reset-to-undo wording. On Wi-Fi, also check the expected disconnection warning.
+   Tap Cancel first: the Mini must remain pending with STARLINK available.
+4. Choose Wi-Fi off again and tap **Turn Wi-Fi off** once. This is the Bypass
+   `wifi_setup_bypass` write from the table above; do not also send the curl vector.
+   Expect status 0 if the response arrives, visible progress, and Wi-Fi disappearing.
+5. **Ethernet:** within about 60 seconds, expect an address in `100.64.0.0/10`,
+   no router answer at `192.168.1.1:9001`, and read-only dish info at
+   `192.168.100.1:9201`. Expect “Wi-Fi is off”.
+   **Setup Wi-Fi:** expect the phone to disconnect and a result explaining that
+   Wi-Fi is likely off. Note whether the response arrived before the disconnection.
+   Connect Ethernet to check the same address/router/dish evidence independently.
+6. Follow the result illustration: move the Mini's cable to the separate router's
+   WAN/Internet/globe-labelled port. Check the port-label note and undo instructions.
+   Interrupting verification or losing the connection without success evidence must
+   offer reconnect/check guidance without automatically sending another write.
+7. Restore the desired state with another physical reset plus setup or the official
+   app. Record date, dish/router firmware, response status (or lost response), timing,
+   and exact observations in FINDINGS.md. These M2 app checks remain unperformed
+   until a human records them; the earlier protocol-only Ethernet test is not a substitute.

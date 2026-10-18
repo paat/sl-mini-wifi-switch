@@ -1,0 +1,4 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="320dp" android:height="150dp" android:viewportWidth="320" android:viewportHeight="150">
+    <!-- Original generic rear view of the Mini; circular reset symbol is emphasized. -->
+    <path android:fillColor="#00000000" android:strokeColor="#FF000000" android:strokeWidth="3" android:strokeLineJoin="round" android:strokeLineCap="round" android:pathData="M66,10 L251,10 L237,126 L80,126 Z M82,26 L235,26 L225,111 L92,111 Z M121,94 L139,94 L139,106 L121,106 Z M181,94 L199,94 L199,106 L181,106 Z M171,59 A16,16 0,1 0,167 75 M171,48 L171,59 L160,59 M187,64 A29,29 0,1 1,129 64 A29,29 0,1 1,187 64" />
+</vector>

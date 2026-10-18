@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Mini Wi-Fi Switch</string>
-    <string name="read_only_note">This version checks your Mini. It does not change anything.</string>
+    <string name="read_only_note">Checking your Mini does not change its settings.</string>
     <string name="ready_title">Your Mini is ready</string>
-    <string name="ready_body">Choose how you want to use it. These choices are a preview for the next version.</string>
+    <string name="ready_body">Choose how you want to use it.</string>
     <string name="wifi_off">Wi-Fi off</string>
     <string name="wifi_secure">Wi-Fi on with password</string>
     <string name="configured_title">Your Mini is already set up</string>
@@ -67,4 +67,39 @@
     <string name="radio_on">On</string>
     <string name="details_reset_note">After a reset, the Mini uses 192.168.1.x. Changing this network address needs the official Starlink app.</string>
     <string name="details_direct_note">With Wi-Fi off (bypass), one phone or laptop can use a direct cable connection and receive an internet address from Starlink. Only one device at a time can connect this way.</string>
+    <string name="wifi_off_confirm_title">Turn Wi-Fi off?</string>
+    <string name="wifi_off_confirm_body">The Mini will have no Wi-Fi and no local network of its own. Its cable must go to a router.</string>
+    <string name="wifi_off_undo">To turn Wi-Fi back on, reset the Mini. Then choose “Wi-Fi on with password” in this app. Allow about 3 minutes.</string>
+    <string name="wifi_off_disconnect_warning">Your phone will lose its Wi-Fi connection to the Mini. This is expected.</string>
+    <string name="wifi_off_confirm">Turn Wi-Fi off</string>
+    <string name="cancel">Cancel</string>
+    <string name="wifi_off_progress_title">Turning Wi-Fi off</string>
+    <string name="wifi_off_progress_body">The Mini is switching off its Wi-Fi. We are checking that it has finished.</string>
+    <string name="wifi_off_progress_time">This usually takes less than 1 minute.</string>
+    <string name="wifi_off_progress_help">Keep the Mini powered on. If it takes longer, we will show you how to reconnect and check. We will not send the change again.</string>
+    <string name="wifi_off_result_title">Wi-Fi is off</string>
+    <string name="wifi_off_likely">The phone lost its connection as expected. Wi-Fi is likely off. Connect the cable as shown to check.</string>
+    <string name="wifi_off_router_instruction">Connect the Mini’s Ethernet cable to your router’s internet port.</string>
+    <string name="wifi_off_port_help">Look for WAN, Internet, or a globe symbol. This port is often a different colour.</string>
+    <string name="wifi_off_router_description">Mini on the left. Its cable goes to the router’s highlighted Internet port on the right, labelled WAN or Internet.</string>
+    <string name="mini_label">Mini</string>
+    <string name="router_label">Router</string>
+    <string name="internet_port_label">WAN / Internet</string>
+    <string name="done">Done</string>
+    <string name="wifi_off_already_title">This Mini is already set up</string>
+    <string name="wifi_off_already_body">Reset the Mini first. Find the reset symbol on its back. Press until it clicks, then keep holding for 3 seconds.</string>
+    <string name="wifi_off_refused_title">The Mini refused this change</string>
+    <string name="wifi_off_refused_body">Only the official Starlink app can change a Mini that is already set up. Reconnect to check its settings.</string>
+    <string name="wifi_off_unreachable_title">Cannot reach the Mini</string>
+    <string name="wifi_off_unreachable_body">We could not check whether Wi-Fi turned off. Connect a cable or join the STARLINK Wi-Fi, then check again.</string>
+    <string name="wifi_off_error_no_retry">The change will not be sent again unless you choose it and confirm.</string>
+    <string name="show_reset_steps">Show reset steps</string>
+    <string name="reconnect_to_mini">Reconnect to Mini</string>
+    <string name="reset_title">Reset your Mini</string>
+    <string name="reset_press">Keep the Mini powered on. Find the reset symbol on the back. Press until it clicks. Keep holding for 3 seconds.</string>
+    <string name="reset_press_description">Back of the Mini with the reset symbol circled. A finger presses and holds the symbol.</string>
+    <string name="reset_light">The light blinks quickly, then goes off. Release the button and wait about 2 minutes for the STARLINK Wi-Fi to appear.</string>
+    <string name="reset_light_description">Mini light: blinking quickly, then off. When STARLINK Wi-Fi appears, the Mini is ready.</string>
+    <string name="reset_wait">Allow about 3 minutes in total. If STARLINK does not appear, check the power and connect a cable to check again.</string>
+    <string name="reset_ready">The Mini is ready when this app says “Your Mini is ready”. Choose “Wi-Fi on with password” to turn Wi-Fi back on.</string>
 </resources>

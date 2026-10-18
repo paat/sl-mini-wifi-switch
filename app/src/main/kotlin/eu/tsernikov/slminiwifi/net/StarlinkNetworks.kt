@@ -28,6 +28,30 @@ class StarlinkNetworks(context: Context) : Closeable {
     private var requestCallback: ConnectivityManager.NetworkCallback? = null
     private var pendingRequest: CancellableContinuation<StarlinkConnection?>? = null
 
+    /** Observe the selected link, never the phone's default (possibly mobile) network. */
+    fun isPresent(connection: StarlinkConnection): Boolean = connection.network in connectivity.allNetworks
+
+    fun isEthernet(connection: StarlinkConnection): Boolean =
+        connectivity.getNetworkCapabilities(connection.network)
+            ?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true
+
+    fun ipv4Addresses(connection: StarlinkConnection): List<String> =
+        connectivity.getLinkProperties(connection.network)?.linkAddresses.orEmpty()
+            .mapNotNull { (it.address as? Inet4Address)?.hostAddress }
+
+    fun interfaceName(connection: StarlinkConnection): String? =
+        connectivity.getLinkProperties(connection.network)?.interfaceName
+
+    /** DHCP may replace a Network handle; only the same cable adapter can verify the write. */
+    fun findEthernetOnInterface(name: String?): StarlinkConnection? {
+        if (name == null) return null
+        return connectivity.allNetworks.firstOrNull { network ->
+            connectivity.getNetworkCapabilities(network)
+                ?.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) == true &&
+                connectivity.getLinkProperties(network)?.interfaceName == name && usableEthernet(network)
+        }?.let(::connection)
+    }
+
     /** Call again after a link change so DHCP changes are reflected in the returned gateway. */
     @SuppressLint("MissingPermission") // Activity obtains runtime Wi-Fi/local-network permissions.
     fun findAvailable(): StarlinkConnection? {
