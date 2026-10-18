@@ -1,8 +1,32 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.roborazzi)
 }
+
+val keystoreProperties = Properties().apply {
+    val file = rootProject.file("keystore.properties")
+    if (file.isFile) {
+        file.inputStream().use(::load)
+    }
+}
+
+fun releaseCredential(envName: String, propertyName: String): String? =
+    System.getenv(envName)?.takeIf { it.isNotBlank() }
+        ?: keystoreProperties.getProperty(propertyName)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = releaseCredential("RELEASE_KEYSTORE_FILE", "storeFile")
+val releaseStorePassword = releaseCredential("RELEASE_KEYSTORE_PASSWORD", "storePassword")
+val releaseKeyAlias = releaseCredential("RELEASE_KEY_ALIAS", "keyAlias")
+val releaseKeyPassword =
+    releaseCredential("RELEASE_KEY_PASSWORD", "keyPassword") ?: releaseStorePassword
+val releaseSigningReady =
+    !releaseStoreFile.isNullOrBlank() &&
+        !releaseStorePassword.isNullOrBlank() &&
+        !releaseKeyAlias.isNullOrBlank() &&
+        !releaseKeyPassword.isNullOrBlank()
 
 android {
     namespace = "eu.tsernikov.slminiwifi"
@@ -14,6 +38,32 @@ android {
         targetSdk = libs.versions.target.sdk.get().toInt()
         versionCode = libs.versions.app.code.get().toInt()
         versionName = libs.versions.app.name.get()
+    }
+
+    if (releaseSigningReady) {
+        val storeFilePath = checkNotNull(releaseStoreFile)
+        val storePasswordValue = checkNotNull(releaseStorePassword)
+        val keyAliasValue = checkNotNull(releaseKeyAlias)
+        val keyPasswordValue = checkNotNull(releaseKeyPassword)
+        signingConfigs {
+            create("release") {
+                storeFile = rootProject.file(storeFilePath)
+                storePassword = storePasswordValue
+                keyAlias = keyAliasValue
+                keyPassword = keyPasswordValue
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            if (releaseSigningReady) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+        }
     }
 
     buildFeatures {
