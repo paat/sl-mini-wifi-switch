@@ -236,15 +236,20 @@ private fun insertionPosition(animate: Boolean, press: Boolean = false): Float {
     if (!rememberGuideAnimationsEnabled(animate)) return 0f
     val transition = rememberInfiniteTransition(label = "plug or press")
     val position by transition.animateFloat(
-        initialValue = 8f, targetValue = 0f,
-        animationSpec = if (press) infiniteRepeatable(keyframes {
-            durationMillis = 4500
-            8f at 0
-            0f at 500
-            0f at 3500 // Show a full three-second hold before releasing.
-            8f at 4000
-        }, RepeatMode.Restart) else infiniteRepeatable(tween(1400), RepeatMode.Reverse),
+        initialValue = 8f, targetValue = if (press) 8f else 0f,
+        animationSpec = if (press) infiniteRepeatable(resetPressKeyframes, RepeatMode.Restart)
+            else infiniteRepeatable(tween(1400), RepeatMode.Reverse),
         label = "insertion position",
     )
     return position
+}
+
+/** Press, hold for three seconds, release, then pause fully released before repeating. */
+internal val resetPressKeyframes = keyframes<Float> {
+    durationMillis = 4500
+    8f at 0
+    0f at 500
+    0f at 3500
+    8f at 4000
+    8f at 4500
 }
