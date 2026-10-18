@@ -9,6 +9,16 @@ An open-source Android app that switches a **Starlink Mini** between two field m
 
 > **Status: pre-alpha, M3 software implemented.** The app finds the Mini, shows read-only details, and offers Wi-Fi off or Wi-Fi on with a password only while setup is pending. Every setup write requires an explicit confirmation and is sent once. Secure Wi-Fi includes encrypted profile reuse, a password/QR result, and Android network saving. Protocol writes were verified separately by a human (see [docs/FINDINGS.md](docs/FINDINGS.md)); app hardware checks and password-limit checks remain pending.
 
+## Install
+
+Download `mini-wifi-switch-<version>.apk` and the matching `.sha256` file from [GitHub Releases](https://github.com/paat/sl-mini-wifi-switch/releases). On a computer, check the download before copying it to the phone:
+
+```bash
+sha256sum -c mini-wifi-switch-<version>.apk.sha256
+```
+
+Open the APK on the phone. When Android asks, allow that browser or file app to install apps.
+
 ## Build
 
 Use JDK 21 and an Android SDK with platform 37 and Build Tools 36.0.0. Set
@@ -49,6 +59,16 @@ Verification releases the temporary connection before system-wide network saving
 The `:protocol` module is pure Kotlin/JVM; `:app` is the Android Compose app.
 Dependency, plugin, and SDK versions live in `gradle/libs.versions.toml`; the
 wrapper distribution and checksum are pinned in `gradle/wrapper/gradle-wrapper.properties`.
+
+## Release
+
+To publish a version:
+
+1. Bump `app-name` and `app-code` in [`gradle/libs.versions.toml`](gradle/libs.versions.toml).
+2. Add notes at `fastlane/metadata/android/en-US/changelogs/<app-code>.txt`.
+3. Push a tag `v<app-name>` (for example `v0.1.0`).
+
+GitHub Actions builds the signed APK on that tag and attaches `mini-wifi-switch-<app-name>.apk` and its `.sha256` file to a GitHub Release. A tag that contains a hyphen, or that starts with `v0`, is marked as a prerelease. Signing material stays in repository secrets and in the gitignored `keystore.properties` file.
 
 ## How it works
 
