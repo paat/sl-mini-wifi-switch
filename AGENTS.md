@@ -43,6 +43,15 @@ The users are **non-technical people in the field**. The app must be foolproof a
 - Docs updated: ROADMAP.md (tick the task), FINDINGS.md if hardware facts changed, PROTOCOL.md if messages changed.
 - Anything that needs a hardware test is listed in the PR description with the exact steps from TESTING.md.
 
+## Testing on a real phone
+
+Test phones are plugged by USB into `phone-gw`, a Raspberry Pi at `192.168.1.4` that shares its adb server on port 5037. Use it instead of wireless debugging; no pairing is needed.
+
+- Point adb at it: `export ADB_SERVER_SOCKET=tcp:192.168.1.4:5037`. Login shells in `sl-mini-dev` already set this; non-interactive shells don't. Then `adb devices` lists the phones.
+- `./gradlew installDebug` doesn't use the remote server. Build with `./gradlew assembleDebug`, then `adb install -r app/build/outputs/apk/debug/app-debug.apk`.
+- The phones are personal phones. Only install, launch and uninstall this app on them; don't change their settings or other apps. A release build installed from a QR code has a different signature: `adb install` then fails with `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, and uninstalling it deletes the app's data, so ask first.
+- Take screenshots with `adb exec-out screencap -p > shot.png`. Don't rely on `uiautomator dump`: it can return a hidden window from another app.
+
 ## Background
 
 The protocol was worked out on 2026-10-18 by talking to a Starlink Mini over Ethernet from an Android phone (adb shell + curl), using the router's gRPC server reflection to read message definitions. The session log of that work is summarized in [docs/FINDINGS.md](docs/FINDINGS.md).
