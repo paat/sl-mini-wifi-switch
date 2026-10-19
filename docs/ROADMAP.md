@@ -78,6 +78,28 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Unknown detection and conservative setup refusal, regression tests, light/dark/200% status screenshots in `docs/screenshots/m5-status/`
 - [ ] Human read-only Home and TalkBack checks (TESTING.md #22)
 
+## Connection lifecycle (#19)
+
+- [x] Keep app-requested STARLINK connections in the ViewModel across Activity recreation; release on task finish or explicit flow release
+- [x] Show connection failures and Open phone settings on editing and both confirmation screens
+- [x] Consume quick entry once across ActivityScenario recreation, with the latest delivered launch intent
+- [x] Re-read Ethernet before requesting Wi-Fi from Reconnect; regression tests for all four cases
+
+## PR #28 tribunal cycle 1 (#19)
+
+- [x] Distinguish a new cold quick entry from restoration of the same intent (T-001)
+- [x] Keep an active Reconnect probe and its Wi-Fi fallback across stop/start (T-002)
+- [x] Clear old connection failures and unneeded Wi-Fi permission feedback after a successful cable read (T-003)
+- [x] Share SecureWifi permission requirements between confirmation and resume (T-004)
+- [x] Use Reconnect wording on editing and confirmation screens, retaining Check again on Home (T-005)
+
+## PR #28 tribunal cycle 2 (#19)
+
+- [x] Assign connection jobs before immediate execution so leaving the flow cancels the Wi-Fi fallback (T-006)
+- [x] Store each new launch intent before handling it; restore with the latest delivered launch ID (T-007)
+- [x] Centralize feedback expiry on screen changes and successful detection; share both confirmation permission gates and one button-independent permission sentence (T-008, T-009)
+- [x] Remove the unused setupLaunchHandled test key (T-010)
+
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found

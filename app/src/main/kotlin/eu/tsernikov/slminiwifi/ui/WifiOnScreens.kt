@@ -49,11 +49,13 @@ fun WifiOnSetupScreen(
     onHelp: (() -> Unit)? = null,
     onReconnect: (() -> Unit)? = null,
     canConfirm: Boolean = true,
+    @StringRes connectionMessage: Int? = null,
+    onPermissions: (() -> Unit)? = null,
 ) {
     var showPassword by remember { mutableStateOf(false) }
     Screen {
         Heading(stringResource(R.string.wifi_secure))
-        SetupConnectionStatus(canConfirm, onReconnect)
+        SetupConnectionStatus(canConfirm, onReconnect, message = connectionMessage, onPermissions = onPermissions)
         message?.let {
             Text(stringResource(it))
             onHelp?.let { help -> SecondaryButton(R.string.show_reset_steps, help) }
@@ -105,6 +107,8 @@ fun WifiOnConfirmScreen(
     onCancel: () -> Unit,
     canConfirm: Boolean = true,
     onReconnect: (() -> Unit)? = null,
+    @StringRes connectionMessage: Int? = null,
+    onPermissions: (() -> Unit)? = null,
 ) {
     Screen {
         WifiReadyIcon()
@@ -115,7 +119,7 @@ fun WifiOnConfirmScreen(
         Text(stringResource(R.string.wifi_on_rejoin))
         ConnectionDialogIllustration(name)
         Text(stringResource(R.string.wifi_on_undo))
-        SetupConnectionStatus(canConfirm, onReconnect)
+        SetupConnectionStatus(canConfirm, onReconnect, message = connectionMessage, onPermissions = onPermissions)
         PrimaryButton(R.string.wifi_on_confirm, onConfirm, canConfirm)
         SecondaryButton(R.string.cancel, onCancel)
     }
