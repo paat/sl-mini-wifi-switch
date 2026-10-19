@@ -100,6 +100,17 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Centralize feedback expiry on screen changes and successful detection; share both confirmation permission gates and one button-independent permission sentence (T-008, T-009)
 - [x] Remove the unused setupLaunchHandled test key (T-010)
 
+## Configuration-first Home (#32)
+
+- [x] “Ready to set up” Home with explained choices, secondary Details and fewer actions
+- [x] Foreground read-only polling on Home and Reset help; automatic return to setup choices after reset
+- [x] Restart progress and stopped-check retry only; updated guide wording and icon description
+- [x] Fake-transport reset sequence, lifecycle/navigation regression tests and affected Roborazzi baselines
+- [x] Review cycle 1: transition-only reset-help navigation with origin preservation; hide stale saved credentials on SetupPending Home
+- [x] Review cycle 2: share reset-help polling eligibility, keep checking after NotFound, retain the active poll across navigation, and preserve working Confirm after Back (T-001, T-002, T-003)
+- [x] Review cycle 3: quiet background polls with stable setup choices; persist reset-help auto-detection across process death; remove duplicate Home-as-Details captures (T-004, T-005, T-006)
+- [ ] Human reset/reconnect and TalkBack checks (TESTING.md #32)
+
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found

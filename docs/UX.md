@@ -19,6 +19,8 @@ People with no technical background, often in the field: outdoors, in sunlight o
    - Plain words only in the main interface. Use "Wi-Fi off" and "Wi-Fi on with password", never "bypass", "setup request", "subnet", "gRPC" or "API". Technical details live only in an Advanced or Details screen.
    - Short sentences, one idea each. Name things by what the user sees: "the reset symbol on the back of the Mini", "the cable port".
    - Two big choices on the main screen, matching the two field modes in the README.
+   - After a reset, Home says “Ready to set up” and explains both choices in one short sentence each. Details is secondary; no manual check, reset help or read-only footer competes with setup.
+   - Home and Reset help opened from Home or a completed setup detect readiness automatically. Reset help from editing or other results/errors stays offline and preserves the return screen. A restarting Mini shows progress; “Check again” appears only after checking has stopped. Automatic detection never leaves editing, confirmation, writing or a Start here guide page.
 
 3. **Visual guides.** Every physical step has an illustration, and a short animation where movement matters:
    - Where the reset symbol is on the back of the Mini, and how to press it (press until it clicks, keep holding for 3 seconds).

@@ -60,7 +60,7 @@ class ScreenshotsTest {
                 onDetails = {}, onSetupChoice = { chosen = it }, animateGuides = false, onHelp = {})
         }
         capture("home_setup_pending_font_200")
-        compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Reset help").assertDoesNotExist()
         compose.onNodeWithText("Wi-Fi off").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(true, chosen)
         compose.onNodeWithText("Wi-Fi on with password").performScrollTo().assertIsDisplayed().performClick()
@@ -86,11 +86,13 @@ class ScreenshotsTest {
         val nextStep = when (state) {
             MiniState.SetupPending -> "Wi-Fi off"
             MiniState.Configured, MiniState.Bypass, MiniState.Unknown -> "Details"
-            MiniState.Rebooting, MiniState.NotFound -> "Check again"
+            MiniState.Rebooting -> "Reset help"
+            MiniState.NotFound -> "Check again"
         }
         compose.onNodeWithText(nextStep).performScrollTo().assertIsDisplayed().assertHasClickAction()
         val resetHelp = when (state) {
             MiniState.Configured, MiniState.Bypass, MiniState.Unknown -> "How to reset the Mini"
+            MiniState.SetupPending -> "Details"
             else -> "Reset help"
         }
         compose.onNodeWithText(resetHelp).performScrollTo().assertIsDisplayed().assertHasClickAction()

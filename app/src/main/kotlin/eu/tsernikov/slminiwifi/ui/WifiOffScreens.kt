@@ -178,13 +178,17 @@ fun WifiOffErrorScreen(
 /** All text and drawings are bundled; this card needs no connection. */
 @Composable
 fun ResetGuideScreen(
-    onDone: () -> Unit,
+    onBack: () -> Unit,
     animateGuides: Boolean = true,
-    onBack: () -> Unit = onDone,
+    autoDetect: Boolean = false,
 ) {
     Screen {
         SecondaryButton(R.string.back, onBack)
         Heading(stringResource(R.string.reset_title))
+        if (autoDetect) {
+            WaitingProgress(animateGuides)
+            Text(stringResource(R.string.reset_checking))
+        }
         Text(stringResource(R.string.field_offline_note))
         Text(stringResource(R.string.field_reset_warning))
         Text(stringResource(R.string.reset_press))
@@ -194,7 +198,6 @@ fun ResetGuideScreen(
         Text(stringResource(R.string.reset_wait))
         RestartIllustration(animateGuides)
         Text(stringResource(R.string.reset_ready))
-        PrimaryButton(R.string.check_again, onDone)
     }
 }
 
