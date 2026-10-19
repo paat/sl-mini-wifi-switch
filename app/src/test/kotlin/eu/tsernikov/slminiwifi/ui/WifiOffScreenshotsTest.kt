@@ -1,8 +1,5 @@
 package eu.tsernikov.slminiwifi.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -10,7 +7,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import eu.tsernikov.slminiwifi.state.WifiOffError
 import java.io.File
@@ -55,7 +51,7 @@ class WifiOffScreenshotsTest {
     private fun confirmation(isWifi: Boolean, dark: Boolean, fontScale: Float = 1f) {
         var confirms = 0
         var cancels = 0
-        show(dark, fontScale) {
+        compose.show(dark, fontScale) {
             WifiOffConfirmScreen(isWifi, { confirms++ }, { cancels++ }, animateGuides = false)
         }
         val name = "confirm_${if (isWifi) "wifi" else "ethernet"}_${suffix(dark, fontScale)}"
@@ -71,7 +67,7 @@ class WifiOffScreenshotsTest {
     }
 
     private fun progress(dark: Boolean) {
-        show(dark) { WifiOffProgressScreen() }
+        compose.show(dark) { WifiOffProgressScreen() }
         compose.mainClock.advanceTimeBy(400)
         compose.onNodeWithText("This usually takes less than 1 minute.").assertIsDisplayed()
         capture("progress_${suffix(dark)}")
@@ -80,7 +76,7 @@ class WifiOffScreenshotsTest {
     private fun result(likely: Boolean, dark: Boolean, fontScale: Float = 1f) {
         var done = 0
         var details = 0
-        show(dark, fontScale) {
+        compose.show(dark, fontScale) {
             WifiOffResultScreen(likely, { details++ }, { done++ }, animateGuides = false)
         }
         val name = "result_${if (likely) "likely_" else ""}${suffix(dark, fontScale)}"
@@ -94,7 +90,7 @@ class WifiOffScreenshotsTest {
 
     private fun error(error: WifiOffError, dark: Boolean) {
         var next = 0
-        show(dark) { WifiOffErrorScreen(error, { next++ }, animateGuides = false) }
+        compose.show(dark) { WifiOffErrorScreen(error, { next++ }, animateGuides = false) }
         capture("error_${when (error) {
             WifiOffError.AlreadySetUp -> "already_set_up"
             WifiOffError.Refused -> "refused"
@@ -107,20 +103,12 @@ class WifiOffScreenshotsTest {
 
     private fun reset(dark: Boolean, fontScale: Float = 1f) {
         var checks = 0
-        show(dark, fontScale) { ResetGuideScreen({ checks++ }, animateGuides = false) }
+        compose.show(dark, fontScale) { ResetGuideScreen({ checks++ }, animateGuides = false) }
         val name = "reset_guide_${suffix(dark, fontScale)}"
         capture(name)
         compose.onNodeWithText("Check again").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(1, checks)
         capture("${name}_actions")
-    }
-
-    private fun show(dark: Boolean, fontScale: Float = 1f, content: @Composable () -> Unit) {
-        compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
-                MiniTheme(darkTheme = dark, content = content)
-            }
-        }
     }
 
     private fun capture(name: String) {

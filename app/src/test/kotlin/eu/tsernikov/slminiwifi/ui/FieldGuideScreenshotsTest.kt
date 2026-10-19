@@ -1,9 +1,6 @@
 package eu.tsernikov.slminiwifi.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -20,7 +17,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.text.TextLayoutResult
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import eu.tsernikov.slminiwifi.state.MiniSnapshot
@@ -89,7 +85,7 @@ class FieldGuideScreenshotsTest {
 
     @Test fun guideStepChangesStartAtTopAtLargeFontIncludingBackAndAlternatePaths() {
         val step = mutableStateOf(GuideStep.Reset)
-        show(false, 2f) { GuideStepScreen(step.value, {}, {}, {}, {}, {}, false) }
+        compose.show(false, 2f) { GuideStepScreen(step.value, {}, {}, {}, {}, {}, false) }
         // Forward, alternate connection path, and Back all create fresh scroll state.
         for (next in listOf(GuideStep.Light, GuideStep.Cable, GuideStep.Wifi,
             GuideStep.AndroidConnect, GuideStep.Check, GuideStep.AndroidConnect,
@@ -106,7 +102,7 @@ class FieldGuideScreenshotsTest {
 
     @Test fun lightAnimationFinishesOffAndStaysOff() {
         compose.mainClock.autoAdvance = false
-        show(false) { ResetLightIllustration(animate = true) }
+        compose.show(false) { ResetLightIllustration(animate = true) }
         compose.mainClock.advanceTimeBy(3500)
         val light = compose.onNodeWithContentDescription(lightDescription)
         light.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Light off"))
@@ -115,7 +111,7 @@ class FieldGuideScreenshotsTest {
     }
 
     @Test fun reducedMotionShowsOffAndDoesNotClaimHalfFinished() {
-        show(false) {
+        compose.show(false) {
             Screen { ResetLightIllustration(false); WaitingProgress(false) }
         }
         compose.onNodeWithContentDescription(lightDescription)
@@ -127,7 +123,7 @@ class FieldGuideScreenshotsTest {
     private fun home(state: MiniState, dark: Boolean) {
         var guides = 0
         var helps = 0
-        show(dark) {
+        compose.show(dark) {
             HomeScreen(MiniSnapshot(state), onRefresh = {}, onConnect = {}, onDetails = {},
                 onSetupChoice = {}, animateGuides = false, onGuide = { guides++ }, onHelp = { helps++ })
         }
@@ -150,7 +146,7 @@ class FieldGuideScreenshotsTest {
 
     private fun error(error: WifiOffError, dark: Boolean) {
         var helps = 0
-        show(dark) { WifiOffErrorScreen(error, {}, animateGuides = false, onHelp = { helps++ }) }
+        compose.show(dark) { WifiOffErrorScreen(error, {}, animateGuides = false, onHelp = { helps++ }) }
         val name = "error_${error.name.lowercase()}_${suffix(dark, 1f)}"
         capture(name)
         compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed().performClick()
@@ -165,7 +161,7 @@ class FieldGuideScreenshotsTest {
         var wifi = 0
         var cable = 0
         var connect = 0
-        show(dark, fontScale) {
+        compose.show(dark, fontScale) {
             GuideStepScreen(step, { back++ }, { next++ }, { wifi++ }, { cable++ }, { connect++ }, false)
         }
         val name = "guide_${step.name.lowercase()}_${suffix(dark, fontScale)}"
@@ -211,7 +207,7 @@ class FieldGuideScreenshotsTest {
     private fun help(dark: Boolean, fontScale: Float = 1f) {
         var back = 0
         var checks = 0
-        show(dark, fontScale) { ResetGuideScreen({ checks++ }, false, { back++ }) }
+        compose.show(dark, fontScale) { ResetGuideScreen({ checks++ }, false, { back++ }) }
         val name = "offline_help_${suffix(dark, fontScale)}"
         capture(name)
         compose.onNodeWithContentDescription(lightDescription).performScrollTo().assertIsDisplayed()
@@ -227,7 +223,7 @@ class FieldGuideScreenshotsTest {
     }
 
     private fun restarting(dark: Boolean, fontScale: Float = 1f) {
-        show(dark, fontScale) {
+        compose.show(dark, fontScale) {
             SetupProgressScreen(eu.tsernikov.slminiwifi.R.string.wifi_on_progress_title,
                 eu.tsernikov.slminiwifi.R.string.wifi_on_progress_body,
                 eu.tsernikov.slminiwifi.R.string.wifi_on_progress_time,
@@ -253,14 +249,6 @@ class FieldGuideScreenshotsTest {
                 node.config[SemanticsActions.GetTextLayoutResult].action?.invoke(results)
                 results.forEach(::assertTextFits)
             }
-    }
-
-    private fun show(dark: Boolean, fontScale: Float = 1f, content: @Composable () -> Unit) {
-        compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
-                MiniTheme(darkTheme = dark, content = content)
-            }
-        }
     }
 
     private fun capture(name: String) {

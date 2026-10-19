@@ -1,13 +1,10 @@
 package eu.tsernikov.slminiwifi.ui
 
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import eu.tsernikov.slminiwifi.protocol.AuthKind
 import eu.tsernikov.slminiwifi.protocol.BasicServiceSet
@@ -54,15 +51,11 @@ class HomeStatusScreenshotsTest {
                 BasicServiceSet(ssid = "Mini-Camp", band = 2, authKind = AuthKind.WPA2),
                 BasicServiceSet(ssid = "Mini-Camp", band = 5, authKind = AuthKind.WPA2),
             ))))) else MiniDetails()
-        compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
-                MiniTheme(darkTheme = dark) {
-                    HomeScreen(MiniSnapshot(state, details), onRefresh = {}, onConnect = {}, onDetails = {},
-                        onSetupChoice = {}, animateGuides = false, onGuide = {}, onHelp = {},
-                        onShowCredentials = if (saved) ({}) else null,
-                        savedWifiName = if (saved) "Mini-Camp" else null)
-                }
-            }
+        compose.show(dark, fontScale) {
+            HomeScreen(MiniSnapshot(state, details), onRefresh = {}, onConnect = {}, onDetails = {},
+                onSetupChoice = {}, animateGuides = false, onGuide = {}, onHelp = {},
+                onShowCredentials = if (saved) ({}) else null,
+                savedWifiName = if (saved) "Mini-Camp" else null)
         }
         val name = state.name.lowercase() + (if (state == MiniState.Configured)
             if (saved) "_saved" else "_hidden" else "") +

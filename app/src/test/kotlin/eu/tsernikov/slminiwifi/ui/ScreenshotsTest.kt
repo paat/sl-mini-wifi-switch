@@ -1,8 +1,5 @@
 package eu.tsernikov.slminiwifi.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -11,7 +8,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import eu.tsernikov.slminiwifi.protocol.AuthKind
 import eu.tsernikov.slminiwifi.protocol.BasicServiceSet
@@ -59,11 +55,12 @@ class ScreenshotsTest {
 
     @Test fun setupPendingLargeFont() {
         var chosen: Boolean? = null
-        show(dark = false, fontScale = 2f) {
+        compose.show(dark = false, fontScale = 2f) {
             HomeScreen(MiniSnapshot(MiniState.SetupPending), onRefresh = {}, onConnect = {},
-                onDetails = {}, onSetupChoice = { chosen = it }, animateGuides = false)
+                onDetails = {}, onSetupChoice = { chosen = it }, animateGuides = false, onHelp = {})
         }
         capture("home_setup_pending_font_200")
+        compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Wi-Fi off").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(true, chosen)
         compose.onNodeWithText("Wi-Fi on with password").performScrollTo().assertIsDisplayed().performClick()
@@ -72,9 +69,9 @@ class ScreenshotsTest {
 
     private fun home(state: MiniState, dark: Boolean) {
         var connects = 0
-        show(dark) {
+        compose.show(dark) {
             HomeScreen(MiniSnapshot(state, sampleDetails), onRefresh = {}, onConnect = { connects++ },
-                onDetails = {}, onSetupChoice = {}, animateGuides = false)
+                onDetails = {}, onSetupChoice = {}, animateGuides = false, onHelp = {})
         }
         if (state == MiniState.Rebooting) compose.mainClock.advanceTimeBy(400)
         val name = "home_${when (state) {
@@ -92,6 +89,11 @@ class ScreenshotsTest {
             MiniState.Rebooting, MiniState.NotFound -> "Check again"
         }
         compose.onNodeWithText(nextStep).performScrollTo().assertIsDisplayed().assertHasClickAction()
+        val resetHelp = when (state) {
+            MiniState.Configured, MiniState.Bypass, MiniState.Unknown -> "How to reset the Mini"
+            else -> "Reset help"
+        }
+        compose.onNodeWithText(resetHelp).performScrollTo().assertIsDisplayed().assertHasClickAction()
         if (state == MiniState.NotFound) {
             compose.onNodeWithText("Join STARLINK").performScrollTo().assertIsDisplayed().performClick()
             assertEquals(1, connects)
@@ -101,31 +103,34 @@ class ScreenshotsTest {
 
     private fun timedOutHome(dark: Boolean) {
         var checks = 0
-        show(dark) {
+        compose.show(dark) {
             HomeScreen(MiniSnapshot(MiniState.NotFound, probeTimedOut = true),
-                onRefresh = { checks++ }, onConnect = {}, onDetails = {}, onSetupChoice = {}, animateGuides = false)
+                onRefresh = { checks++ }, onConnect = {}, onDetails = {}, onSetupChoice = {},
+                animateGuides = false, onHelp = {})
         }
         capture("home_check_timed_out_${theme(dark)}")
         compose.onNodeWithText("We could not check your Mini").assertIsDisplayed()
+        compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Check again").performScrollTo().performClick()
         assertEquals(1, checks)
     }
 
     private fun savedPasswordHome(dark: Boolean) {
         var opens = 0
-        show(dark) {
+        compose.show(dark) {
             HomeScreen(MiniSnapshot(MiniState.Configured, sampleDetails), onRefresh = {}, onConnect = {},
                 onDetails = {}, onSetupChoice = {}, animateGuides = false, onGuide = {},
-                onShowCredentials = { opens++ }, savedWifiName = "Field Mini")
+                onShowCredentials = { opens++ }, savedWifiName = "Field Mini", onHelp = {})
         }
         capture("home_saved_password_${theme(dark)}")
+        compose.onNodeWithText("How to reset the Mini").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Show my Wi-Fi password").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(1, opens)
     }
 
     private fun details(dark: Boolean) {
         var backs = 0
-        show(dark) { DetailsScreen(sampleDetails) { backs++ } }
+        compose.show(dark) { DetailsScreen(sampleDetails) { backs++ } }
         capture("details_${theme(dark)}")
         compose.onNodeWithText("2025.06.23.mr55202").assertIsDisplayed()
         compose.onNodeWithText("Wi-Fi bands").performScrollTo().assertIsDisplayed()
@@ -138,19 +143,11 @@ class ScreenshotsTest {
 
     private fun preview(dark: Boolean) {
         var backs = 0
-        show(dark) { ComingSoonScreen() { backs++ } }
+        compose.show(dark) { ComingSoonScreen() { backs++ } }
         compose.onNodeWithText("This step comes in the next version. Your Mini is ready and waiting.").assertIsDisplayed()
         capture("preview_wifi_on_${theme(dark)}")
         compose.onNodeWithText("Back").performClick()
         assertEquals(1, backs)
-    }
-
-    private fun show(dark: Boolean, fontScale: Float = 1f, content: @Composable () -> Unit) {
-        compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
-                MiniTheme(darkTheme = dark, content = content)
-            }
-        }
     }
 
     private fun capture(name: String) {

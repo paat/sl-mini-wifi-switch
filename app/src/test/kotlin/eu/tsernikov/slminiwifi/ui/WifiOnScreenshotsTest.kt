@@ -1,8 +1,5 @@
 package eu.tsernikov.slminiwifi.ui
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -11,7 +8,6 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import eu.tsernikov.slminiwifi.data.Profile
 import eu.tsernikov.slminiwifi.state.WifiOffError
@@ -63,7 +59,7 @@ class WifiOnScreenshotsTest {
 
     @Test fun invalidPasswordCannotContinue() {
         var continues = 0
-        show(false) {
+        compose.show(false) {
             WifiOnSetupScreen(Profile("Mini-Camp", "short"), true, false,
                 {}, {}, {}, {}, {}, { continues++ }, {})
         }
@@ -75,7 +71,7 @@ class WifiOnScreenshotsTest {
         var reviews = 0
         var choices = 0
         var reuses = 0
-        show(dark, fontScale) {
+        compose.show(dark, fontScale) {
             WifiOnSetupScreen(profile, own, saved, {}, {}, { choices++ }, { choices++ },
                 { reuses++ }, { reviews++ }, {})
         }
@@ -101,7 +97,7 @@ class WifiOnScreenshotsTest {
     private fun confirm(dark: Boolean) {
         var confirms = 0
         var cancels = 0
-        show(dark) { WifiOnConfirmScreen(profile.name, { confirms++ }, { cancels++ }) }
+        compose.show(dark) { WifiOnConfirmScreen(profile.name, { confirms++ }, { cancels++ }) }
         capture("confirm_${suffix(dark)}")
         assertEquals(0, confirms)
         compose.onNodeWithText("Cancel").performScrollTo().performClick()
@@ -113,7 +109,7 @@ class WifiOnScreenshotsTest {
     }
 
     private fun progress(dark: Boolean) {
-        show(dark) { WifiOnProgressScreen() }
+        compose.show(dark) { WifiOnProgressScreen() }
         compose.mainClock.advanceTimeBy(400)
         compose.onNodeWithText("Getting your Wi-Fi ready").assertIsDisplayed()
         capture("progress_${suffix(dark)}")
@@ -121,7 +117,7 @@ class WifiOnScreenshotsTest {
 
     private fun reconnect(dark: Boolean, error: Boolean) {
         var reconnects = 0
-        show(dark) {
+        compose.show(dark) {
             if (error) WifiOffErrorScreen(WifiOffError.CantReach, {}, animateGuides = false,
                 unreachableBody = eu.tsernikov.slminiwifi.R.string.wifi_on_unreachable_body,
                 onReconnect = { reconnects++ })
@@ -138,7 +134,7 @@ class WifiOnScreenshotsTest {
         var connects = 0
         var details = 0
         var done = 0
-        show(dark) { WifiOnResultScreen(profile, { connects++ }, { details++ }, { done++ }, verified = verified) }
+        compose.show(dark) { WifiOnResultScreen(profile, { connects++ }, { details++ }, { done++ }, verified = verified) }
         val name = if (verified) "result" else "unverified_result"
         capture("${name}_${suffix(dark)}")
         compose.onNodeWithText(profile.password).performScrollTo().assertIsDisplayed()
@@ -157,21 +153,13 @@ class WifiOnScreenshotsTest {
     private fun autoConnect(api29: Boolean, dark: Boolean) {
         var continues = 0
         var backs = 0
-        show(dark) { WifiOnAutoConnectScreen(api29, { continues++ }, { backs++ }) }
+        compose.show(dark) { WifiOnAutoConnectScreen(api29, { continues++ }, { backs++ }) }
         capture("auto_connect_${if (api29) "api29" else "save"}_${suffix(dark)}")
         assertEquals(0, continues)
         compose.onNodeWithText("Back").performScrollTo().performClick()
         assertEquals(1, backs)
         compose.onNodeWithText("Continue to Android").performScrollTo().performClick()
         assertEquals(1, continues)
-    }
-
-    private fun show(dark: Boolean, fontScale: Float = 1f, content: @Composable () -> Unit) {
-        compose.setContent {
-            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
-                MiniTheme(darkTheme = dark, content = content)
-            }
-        }
     }
 
     private fun capture(name: String) {
