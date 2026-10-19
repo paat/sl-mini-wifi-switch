@@ -182,12 +182,13 @@ private fun WifiQuickStatus(config: WifiConfig?, savedWifiName: String?, onShowC
             })
         } else {
             for ((band, disabled) in radioStates) {
-                Value(when (band) {
-                    2 -> R.string.band_2ghz
-                    5 -> R.string.band_5ghz
-                    6 -> R.string.band_5ghz_high
-                    else -> R.string.field_wifi_list_title
-                }, stringResource(if (disabled) R.string.radio_off else R.string.radio_on))
+                val status = stringResource(if (disabled) R.string.radio_off else R.string.radio_on)
+                when (band) {
+                    2 -> Value(R.string.band_2ghz, status)
+                    5 -> Value(R.string.band_5ghz, status)
+                    6 -> Value(R.string.band_5ghz_high, status)
+                    else -> Value(stringResource(R.string.band_other, band), status)
+                }
             }
         }
         if (services.isEmpty()) {
@@ -196,16 +197,18 @@ private fun WifiQuickStatus(config: WifiConfig?, savedWifiName: String?, onShowC
         }
         for ((name, bands) in services.groupBy { it.ssid }) {
             Value(R.string.wifi_on_name, name)
-            val allOpen = bands.all { it.authKind == AuthKind.OPEN }
-            val allSecure = bands.all { it.authKind != null && it.authKind != AuthKind.OPEN }
-            val canShowSaved = allSecure && name.isNotBlank() && name == savedWifiName && onShowCredentials != null
+            // One name can be open on one band and secured on another. Do not call that hidden.
+            val auth = bands.map { it.authKind }.distinct().singleOrNull()
+            val showSaved = onShowCredentials?.takeIf {
+                auth != null && auth != AuthKind.OPEN && name.isNotBlank() && name == savedWifiName
+            }
             Value(R.string.wifi_on_password, stringResource(when {
-                allOpen -> R.string.home_no_password
-                canShowSaved -> R.string.home_password_saved
-                bands.any { it.authKind == null } -> R.string.not_available
+                auth == AuthKind.OPEN -> R.string.home_no_password
+                showSaved != null -> R.string.home_password_saved
+                auth == null -> R.string.not_available
                 else -> R.string.home_password_hidden
             }))
-            if (canShowSaved) SecondaryButton(R.string.wifi_on_home_password, onShowCredentials!!)
+            if (showSaved != null) SecondaryButton(R.string.wifi_on_home_password, showSaved)
         }
     }
 }
@@ -280,9 +283,12 @@ private fun DeviceDetails(@StringRes title: Int, info: DeviceInfo?) {
 }
 
 @Composable
-private fun Value(@StringRes label: Int, value: String?) {
+private fun Value(@StringRes label: Int, value: String?) = Value(stringResource(label), value)
+
+@Composable
+private fun Value(label: String, value: String?) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(stringResource(label), style = MaterialTheme.typography.labelLarge)
+        Text(label, style = MaterialTheme.typography.labelLarge)
         Text(value?.takeIf { it.isNotBlank() } ?: stringResource(R.string.not_available))
     }
 }

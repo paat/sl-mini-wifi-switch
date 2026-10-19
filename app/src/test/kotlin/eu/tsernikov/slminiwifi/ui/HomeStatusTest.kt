@@ -108,6 +108,30 @@ class HomeStatusTest {
         compose.onNodeWithText("Off").performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun configuredMixedOpenAndSecuredBandsSaysPasswordUnavailable() {
+        show(configuredBands(listOf(
+            BasicServiceSet(ssid = "Mini-Camp", band = 2, authKind = AuthKind.OPEN),
+            BasicServiceSet(ssid = "Mini-Camp", band = 5, authKind = AuthKind.WPA2_WPA3),
+        )), onShowCredentials = {})
+        compose.onNodeWithText("Not available").performScrollTo().assertIsDisplayed()
+        compose.onAllNodesWithText("Not available").assertCountEquals(1)
+        compose.onNodeWithText(HIDDEN_PASSWORD).assertDoesNotExist()
+        compose.onNodeWithText("No password").assertDoesNotExist()
+        compose.onNodeWithText("Show my Wi-Fi password").assertDoesNotExist()
+    }
+
+    @Test fun configuredUnknownBandUsesItsNumber() {
+        show(configuredBands(listOf(
+            BasicServiceSet(ssid = "Mini-Camp", band = 2, authKind = AuthKind.WPA2),
+            BasicServiceSet(ssid = "Mini-Camp", band = 7, disable = true, authKind = AuthKind.WPA2),
+        )))
+        compose.onNodeWithText("2.4 GHz").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Band 7").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Wi-Fi").assertDoesNotExist()
+        compose.onNodeWithText("On").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Off").performScrollTo().assertIsDisplayed()
+    }
+
     @Test fun configuredDisabledServiceSetTurnsThatBandOff() {
         val bands = listOf(
             BasicServiceSet(ssid = "Mini-Camp", band = 2, disable = true, authKind = AuthKind.WPA2),
@@ -219,15 +243,17 @@ class HomeStatusTest {
         }
     }
 
-    private fun configured(auth: AuthKind? = AuthKind.WPA2): MiniSnapshot = MiniSnapshot(
-        MiniState.Configured, MiniDetails(config = WifiConfig(setupComplete = true,
-            networks = listOf(Network(basicServiceSets = listOf(
-                BasicServiceSet(ssid = "Mini-Camp", band = 2, authKind = auth),
-                BasicServiceSet(ssid = "Mini-Camp", band = 5, authKind = auth),
-            ))))))
+    private fun configured(auth: AuthKind? = AuthKind.WPA2): MiniSnapshot = configuredBands(listOf(
+        BasicServiceSet(ssid = "Mini-Camp", band = 2, authKind = auth),
+        BasicServiceSet(ssid = "Mini-Camp", band = 5, authKind = auth),
+    ))
+
+    private fun configuredBands(bands: List<BasicServiceSet>): MiniSnapshot = MiniSnapshot(
+        MiniState.Configured, MiniDetails(config = WifiConfig(
+            setupComplete = true, networks = listOf(Network(basicServiceSets = bands)))))
 
     companion object {
         private const val HIDDEN_PASSWORD = "The Mini keeps the password hidden. Check where you wrote it down, or reset the Mini to choose a new one."
-        private const val RESET_NOTE = "To change this setup, reset the Mini to its factory settings first."
+        private const val RESET_NOTE = "To change this setup, find the reset symbol on the back of the Mini. Press until it clicks. Hold for about 3 seconds."
     }
 }
