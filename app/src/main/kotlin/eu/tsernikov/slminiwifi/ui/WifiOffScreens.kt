@@ -65,10 +65,7 @@ internal fun SetupConnectionStatus(
     onPermissions: (() -> Unit)? = null,
 ) {
     ConnectionFeedback(
-        when (message) {
-            R.string.permission_needed -> R.string.setup_permission_needed
-            else -> message
-        },
+        if (onPermissions != null) R.string.permission_needed else message,
         onPermissions,
     )
     if (onReconnect != null) {

@@ -259,7 +259,6 @@ class MainActivityRecoveryTest {
             val controller = Robolectric.buildActivity(MainActivity::class.java,
                 SetupLaunch.intent(RuntimeEnvironment.getApplication())).create(Bundle().apply {
                     putString("screen", origin)
-                    putBoolean("setupLaunchHandled", true)
                     putString("setupLaunchId", "previous-process-entry")
                 })
             try {
@@ -285,6 +284,27 @@ class MainActivityRecoveryTest {
             assertEquals(SetupViewModel.Screen.FieldGuide, restored.get().model.screen)
             assertNull(restored.get().model.writing)
         } finally { restored.destroy() }
+    }
+
+    @Test fun secondQuickLaunchRecreatedWithNewIntentDoesNotReplay() {
+        for (screen in listOf(SetupViewModel.Screen.FieldGuide, SetupViewModel.Screen.WifiOffError)) {
+            val first = Robolectric.buildActivity(MainActivity::class.java,
+                SetupLaunch.intent(RuntimeEnvironment.getApplication())).create()
+            val latest = SetupLaunch.intent(first.get())
+            first.get().model.openGuide()
+            first.newIntent(latest)
+            assertEquals(SetupViewModel.Screen.Home, first.get().model.screen)
+            first.get().model.screen = screen
+            val saved = Bundle()
+            first.saveInstanceState(saved).destroy()
+            // Android relaunches with the latest delivered intent, not the original one.
+            val restored = Robolectric.buildActivity(MainActivity::class.java,
+                android.content.Intent(latest)).create(saved)
+            try {
+                assertEquals(screen, restored.get().model.screen)
+                assertNull(restored.get().model.writing)
+            } finally { restored.destroy() }
+        }
     }
 
     @Test fun coldQuickLaunchKeepsRestoredSavedCredentials() {
@@ -419,10 +439,11 @@ class MainActivityRecoveryTest {
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> state(activity: MainActivity, name: String): T =
-        (field(activity, "$name\$delegate") as MutableState<T>).value
+        if (name == "screen") activity.model.screen as T else (field(activity, "$name\$delegate") as MutableState<T>).value
 
     @Suppress("UNCHECKED_CAST")
     private fun <T> setState(activity: MainActivity, name: String, value: T) {
-        (field(activity, "$name\$delegate") as MutableState<T>).value = value
+        if (name == "screen") activity.model.screen = value as SetupViewModel.Screen
+        else (field(activity, "$name\$delegate") as MutableState<T>).value = value
     }
 }

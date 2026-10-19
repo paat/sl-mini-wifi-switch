@@ -113,7 +113,8 @@ class ConnectionLifecycleTest {
     }
 
     @Test fun quickLaunchRunsOnceAcrossActivityScenarioRecreate() {
-        ActivityScenario.launch<MainActivity>(SetupLaunch.intent(application)).use { scenario ->
+        val launch = SetupLaunch.intent(application)
+        ActivityScenario.launch<MainActivity>(launch).use { scenario ->
             lateinit var model: SetupViewModel
             scenario.onActivity {
                 model = it.model
@@ -121,9 +122,6 @@ class ConnectionLifecycleTest {
                 assertEquals(Screen.Home, model.screen)
                 model.openGuide()
                 model.guideStep = GuideStep.AndroidConnect
-                // Robolectric shares the Intent object; Android retains its own launch Intent.
-                // Restore that system-owned action before the real ActivityScenario recreation.
-                it.intent.action = SetupLaunch.ACTION
             }
             compose.waitForIdle()
             scenario.recreate()
@@ -132,11 +130,14 @@ class ConnectionLifecycleTest {
                 assertEquals(Screen.FieldGuide, model.screen)
                 assertEquals(GuideStep.AndroidConnect, model.guideStep)
                 // A genuinely new quick entry still runs, even with a retained model.
+                val latest = SetupLaunch.intent(it)
                 ReflectionHelpers.callInstanceMethod<Unit>(it, "onNewIntent",
-                    ClassParameter.from(Intent::class.java, SetupLaunch.intent(it)))
+                    ClassParameter.from(Intent::class.java, latest))
+                // Robolectric's relaunch still uses its original constructor intent.
+                // Android updates its client record on delivery of the new intent.
+                launch.replaceExtras(latest)
                 assertEquals(Screen.Home, model.screen)
                 model.screen = Screen.WifiOffError
-                it.intent.action = SetupLaunch.ACTION
             }
             compose.waitForIdle()
             scenario.recreate()
@@ -169,9 +170,8 @@ class ConnectionLifecycleTest {
                         model.permissionRequest = null
                         model.permissionResult(mapOf(Manifest.permission.NEARBY_WIFI_DEVICES to false))
                     }
-                    compose.onNodeWithText("Android needs permission to find and connect to your Mini. Tap Reconnect to the Mini, or allow access in the phone settings.")
+                    compose.onNodeWithText("Allow access in the phone settings, then try again.")
                         .performScrollTo().assertIsDisplayed()
-                    compose.onNodeWithText(application.getString(R.string.permission_needed)).assertDoesNotExist()
                     compose.onNodeWithText("Open phone settings").performScrollTo().performClick()
                     scenario.onActivity {
                         val settings = shadowOf(it).nextStartedActivity
@@ -182,6 +182,31 @@ class ConnectionLifecycleTest {
                         assertNull(model.writing)
                     }
                 }
+            }
+        } finally { Dispatchers.resetMain() }
+    }
+
+    @Test fun retainedConfirmationPermissionCopyDoesNotNameHiddenReconnect() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity {
+                    val model = it.model
+                    installTransport(model)
+                    model.screen = Screen.WifiOnConfirm
+                    model.profile = Profile("FieldName", "FieldPassword77")
+                    model.confirmedConnection = eu.tsernikov.slminiwifi.net.StarlinkConnection(
+                        addNetwork(9, NetworkCapabilities.TRANSPORT_WIFI), "192.168.1.1")
+                    model.snapshot = eu.tsernikov.slminiwifi.state.MiniSnapshot(MiniState.SetupPending)
+                    model.confirmationIsWifi = true
+                    model.checking = false
+                    model.permissionResult(mapOf(Manifest.permission.NEARBY_WIFI_DEVICES to false))
+                }
+                runCurrent()
+                compose.onNodeWithText("Reconnect to the Mini").assertDoesNotExist()
+                compose.onNodeWithText("Allow access in the phone settings, then try again.")
+                    .performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText("Open phone settings").performScrollTo().assertIsDisplayed()
             }
         } finally { Dispatchers.resetMain() }
     }

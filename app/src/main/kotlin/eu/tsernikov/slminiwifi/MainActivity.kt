@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        // Keep the original launch identity: Android restores that intent on recreation.
+        setIntent(intent)
         handleSetupLaunch(intent)
     }
 

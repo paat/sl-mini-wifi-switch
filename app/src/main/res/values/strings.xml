@@ -37,9 +37,8 @@
     <string name="join_starlink">Join STARLINK</string>
     <string name="connection_waiting">Choose STARLINK in Android’s message, then tap Connect. This can take up to 1 minute.</string>
     <string name="connection_failed">We could not join STARLINK. Turn on Wi-Fi and location in your phone settings. Check that the Mini is powered on, then try again or connect a cable.</string>
-    <string name="permission_needed">Android needs permission to find and connect to your Mini. Tap Check again, or allow access in the phone settings.</string>
+    <string name="permission_needed">Allow access in the phone settings, then try again.</string>
     <string name="open_phone_settings">Open phone settings</string>
-    <string name="no_network_permission">Allow this app to connect to your Mini. Tap Check again to give permission.</string>
     <string name="ready_icon_description">Mini ready for a choice</string>
     <string name="configured_icon_description">Check mark: Mini already set up</string>
     <string name="bypass_icon_description">Wi-Fi symbol crossed out</string>
@@ -75,7 +74,6 @@
     <string name="wifi_off_confirm_body">The Mini will have no Wi-Fi and no local network of its own. Its cable must go to a router.</string>
     <string name="wifi_off_undo">To turn Wi-Fi back on, reset the Mini. Then choose “Wi-Fi on with password” in this app. Allow about 3 minutes.</string>
     <string name="wifi_off_disconnect_warning">Your phone will lose its Wi-Fi connection to the Mini. This is expected.</string>
-    <string name="setup_permission_needed">Android needs permission to find and connect to your Mini. Tap Reconnect to the Mini, or allow access in the phone settings.</string>
     <string name="setup_reconnect">Reconnect to the Mini</string>
     <string name="confirm_checking">Checking the connection before you confirm. This usually takes less than a minute. No change has been sent. If the Mini does not answer, we will help you reconnect.</string>
     <string name="wifi_off_confirm">Turn Wi-Fi off</string>

@@ -63,8 +63,9 @@ class SetupViewModelLifecycleTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         try {
             for (screen in listOf(Screen.FieldGuide, Screen.WifiOffError)) {
+                val launch = SetupLaunch.intent(application)
                 val controller = Robolectric.buildActivity(MainActivity::class.java,
-                    SetupLaunch.intent(application)).create().start().resume()
+                    launch).create().start().resume()
                 try {
                     val model = controller.get().model
                     assertEquals(SetupLaunch.ACTION, controller.get().intent.action)
@@ -75,7 +76,11 @@ class SetupViewModelLifecycleTest {
                     assertEquals(screen, model.screen)
                     assertEquals(eu.tsernikov.slminiwifi.ui.GuideStep.AndroidConnect, model.guideStep)
                     // A fresh quick-launch intent still opens Home, and is consumed too.
-                    controller.newIntent(SetupLaunch.intent(controller.get()))
+                    val latest = SetupLaunch.intent(controller.get())
+                    controller.newIntent(latest)
+                    // Robolectric retains the constructor intent; emulate Android's updated
+                    // client record so recreation delivers the latest quick entry.
+                    launch.replaceExtras(latest)
                     assertEquals(Screen.Home, model.screen)
                     assertEquals(SetupLaunch.ACTION, controller.get().intent.action)
                     model.screen = screen

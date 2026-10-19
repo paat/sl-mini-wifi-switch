@@ -31,6 +31,7 @@ import eu.tsernikov.slminiwifi.state.WifiOnOutcome
 import eu.tsernikov.slminiwifi.state.probeWifiOff
 import eu.tsernikov.slminiwifi.ui.GuideStep
 import java.io.IOException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -99,7 +100,15 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     var foreground = false
     var pendingPermissionAction = PermissionAction.Check
     var snapshot by mutableStateOf(MiniSnapshot(MiniState.NotFound))
-    var screen by mutableStateOf(Screen.Home)
+    private var currentScreen by mutableStateOf(Screen.Home)
+    var screen: Screen
+        get() = currentScreen
+        set(value) {
+            if (currentScreen != value) {
+                currentScreen = value
+                clearConnectionFeedback()
+            }
+        }
     var checking by mutableStateOf(false)
     var requestingWifi by mutableStateOf(false)
     var message by mutableStateOf<Int?>(null)
@@ -156,8 +165,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     fun permissionResult(result: Map<String, Boolean>) {
         awaitingPermissionResult = false
         if (result.values.all { it }) {
-            permissionDenied = false
-            message = null
+            clearConnectionFeedback()
             performPermissionAction()
         } else {
             permissionDenied = true
@@ -172,7 +180,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             PermissionAction.Check -> startPolling(showProgress = true)
             PermissionAction.Connect -> connectWifi()
             PermissionAction.Reconnect -> reacquireConfirmation(requestWifiIfMissing = true)
-            PermissionAction.SecureWifi -> confirmWifiOn()
+            PermissionAction.SecureWifi -> confirmSetup()
         }
     }
 
@@ -193,13 +201,15 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         foreground = true
         if (hasLocalAccess()) {
             if (permissionDenied && missingPermissions(pendingPermissionAction).isEmpty()) {
-                permissionDenied = false
-                message = null
+                clearConnectionFeedback()
             }
             if (connecting?.isActive != true && (screen == Screen.WifiOff || screen == Screen.WifiOnConfirm || screen == Screen.WifiOn)) {
                 reacquireConfirmation()
             } else startPolling(showProgress = true)
-        } else message = R.string.no_network_permission
+        } else {
+            permissionDenied = true
+            message = R.string.permission_needed
+        }
     }
 
     fun stop() {
@@ -314,8 +324,14 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         screen = Screen.WifiOn
     }
 
-    fun confirmWifiOn() {
-        if (!canConfirm || screen != Screen.WifiOnConfirm || snapshot.state != MiniState.SetupPending || !WifiRules.isValid(profile)) return
+    fun confirmWifiOn() = confirmSetup()
+
+    fun confirmWifiOff() = confirmSetup()
+
+    private fun confirmSetup() {
+        if (!canConfirm || screen !in listOf(Screen.WifiOnConfirm, Screen.WifiOff) ||
+            snapshot.state != MiniState.SetupPending ||
+            (screen == Screen.WifiOnConfirm && !WifiRules.isValid(profile))) return
         val connection = confirmedConnection
         if (connection == null || !networks.isPresent(connection)) {
             reacquireConfirmation()
@@ -328,6 +344,10 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             permissionRequest = missing
             return
         }
+        if (screen == Screen.WifiOff) writeWifiOff(connection) else writeWifiOn(connection)
+    }
+
+    private fun writeWifiOn(connection: StarlinkConnection) {
         val confirmedProfile = profile
         // Claim the tap before suspending; saving is encrypted and runs off the UI thread.
         screen = Screen.WifiOnProgress
@@ -415,13 +435,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         screen = Screen.WifiOff
     }
 
-    fun confirmWifiOff() {
-        if (!canConfirm || screen != Screen.WifiOff || snapshot.state != MiniState.SetupPending) return
-        val connection = confirmedConnection
-        if (connection == null || !networks.isPresent(connection)) {
-            reacquireConfirmation()
-            return
-        }
+    private fun writeWifiOff(connection: StarlinkConnection) {
         // Change screen synchronously: a second tap cannot launch a second write.
         screen = Screen.WifiOffProgress
         snapshot = MiniSnapshot(MiniState.NotFound)
@@ -509,7 +523,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             awaitingPermissionResult = true
             permissionRequest = needed
         } else {
-            message = null
+            clearConnectionFeedback()
             performPermissionAction()
         }
     }
@@ -517,9 +531,9 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     fun connectWifi() {
         polling?.cancel()
         connecting?.cancel()
-        connecting = scope.launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             requestingWifi = true
-            message = null
+            clearConnectionFeedback()
             try {
                 val connection = networks.requestStarlink()
                 if (connection == null) message = R.string.connection_failed
@@ -538,6 +552,14 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             connecting = null
             if (foreground) start()
         }
+        connecting = job
+        job.start()
+    }
+
+    /** Connection feedback expires at navigation, a successful read, or an explicit retry. */
+    private fun clearConnectionFeedback(action: PermissionAction = pendingPermissionAction) {
+        message = null
+        permissionDenied = permissionDenied && missingPermissions(action).isNotEmpty()
     }
 
     suspend fun saveProfile(value: Profile): Boolean = withContext(Dispatchers.IO) {
@@ -577,6 +599,15 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     }
 
     suspend fun detectAvailable(): Pair<StarlinkConnection?, MiniSnapshot> {
+        val detected = probeAvailable()
+        val connection = detected.first
+        if (connection != null) {
+            clearConnectionFeedback(if (networks.isEthernet(connection)) PermissionAction.Reconnect else PermissionAction.Connect)
+        }
+        return detected
+    }
+
+    private suspend fun probeAvailable(): Pair<StarlinkConnection?, MiniSnapshot> {
         val candidates = networks.findCandidates().toMutableList()
         savedProfile?.let { saved ->
             networks.findVerifiedSavedWifi(saved.name)?.let { if (it !in candidates) candidates.add(it) }
@@ -601,7 +632,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         connecting?.cancel()
         confirmedConnection = null
         checking = true
-        connecting = scope.launch {
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
                 val (connection, result) = detectAvailable()
                 snapshot = result
@@ -610,8 +641,6 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                     confirmedConnection = connection
                     confirmedInterface = networks.interfaceName(connection)
                     confirmationIsWifi = !networks.isEthernet(connection)
-                    permissionDenied = permissionDenied && missingPermissions(PermissionAction.SecureWifi).isNotEmpty()
-                    message = if (permissionDenied) R.string.permission_needed else null
                 } else if (connection == null && requestWifiIfMissing) {
                     requestAccess(PermissionAction.Connect)
                 }
@@ -621,6 +650,9 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                 message = R.string.connection_failed
             } finally { checking = false }
         }
+        // Publish ownership before an immediate probe can install the Wi-Fi fallback.
+        connecting = job
+        job.start()
     }
 
     /** A declined Android Connect dialog can be offered again, without resending setup. */
