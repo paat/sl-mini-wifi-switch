@@ -2,7 +2,7 @@
 
 The Estonian UI uses short sentences and informal singular instructions: **Vajuta**,
 **Ühenda**, **Vali**. Status messages describe what the app is doing; buttons that
-acknowledge a completed physical step use **Vajutatud**, **Oodatud** or **Kaabel on
+acknowledge a completed physical step use **Olen vajutanud**, **Olen oodanud** or **Kaabel on
 ühendatud**. No device operations or English wording changed.
 
 The default language is English. Estonian follows the phone language and is also
@@ -10,17 +10,16 @@ available in Android 13+ per-app language settings. The APK includes only Englis
 and Estonian locale resources. Older Android versions follow the phone language;
 there is no additional in-app language menu.
 
-There are 196 base strings: 186 Estonian translations and 10 fixed strings marked
+There are 197 base strings: 187 Estonian translations and 10 fixed strings marked
 non-translatable in the base resources. These fixed strings are the app name,
 STARLINK, Mini, Wi-Fi, SSID, 5 GHz, WPA2, WPA3, WPA2 / WPA3 and WAN / Internet.
 The latter preserves the physical port markings. The localized frequency **2,4 GHz**
 uses an Estonian decimal comma. Format arguments retain their indices and types.
 
 The base resources declare `tools:locale="en"` so lint knows the fallback language.
-One identical English `ready_title` entry in `values-en/strings.xml` makes the
-English locale explicit in APK badging. Keep it synchronized with the base title.
-AAPT resource deduplication is disabled so it does not discard that identical
-entry; no English text changes. Other English strings still come from the base.
+English strings come from the default `values/strings.xml`; there is no duplicate
+`values-en` resource or resource-deduplication override. `localeFilters` retains
+English and Estonian, and `locales_config.xml` lists both for per-app selection.
 
 ## Glossary
 
@@ -40,6 +39,11 @@ entry; no English text changes. Other English strings still come from the base.
 | Use the same Wi-Fi as last time | Kasuta eelmist Wi-Fi võrku | Short label for reusing the saved name and password. |
 | Connect | Ühenda | Physical connection or the illustrated Android action. |
 | Join STARLINK | Liitu STARLINKiga | Keeps the network name and adds the normal Estonian case ending. |
+| Join on this phone | Liitu selles telefonis | The action happens on this phone; it does not join the phone. |
+| Cancel | Tühista | Cancels the current choice. |
+| Not available | Pole saadaval | Distinct from unknown. |
+| I have pressed / waited | Olen vajutanud / Olen oodanud | Explicit acknowledgement of a completed physical step. |
+| Use Wi-Fi / cable instead | Kasuta hoopis Wi-Fi võrku / Kasuta hoopis kaablit | Preserves the alternative connection choice. |
 | Check again | Kontrolli uuesti | Read-only action. |
 | Cable port | Kaablipesa | A visible socket, not the technical term “port”. |
 | Internet port | Internetipesa | Guidance retains the physical WAN / Internet markings. |
@@ -69,17 +73,16 @@ Branding remains **Mini Wi-Fi Switch** in both the UI and store title.
 - **Inglise tähed** follows the final English input rules. It means letters without
   Estonian diacritics for passwords; names can contain those letters but may need
   to be shorter. The underlying validation is unchanged.
-- **Vajutatud** and **Oodatud** acknowledge a completed step without a long first-person
-  sentence. Review whether the audience finds these sufficiently explicit.
 - **Ühenda**, **Salvesta** and **unusta võrk** describe Android actions. Exact system
   labels can differ by Android version, manufacturer and system language, especially
   if only this app is switched to Estonian.
 - Technical Details uses **Autentimine**, **Raadio** and **5 GHz ülemine sagedusala**.
   These are deliberately kept out of the main instructions.
 
-Issue #33 requires review by a second, independent model **before merge**. That
-language review is still pending; the implementation and layout checks here do not
-claim to replace it.
+The supplied reviewer corrections were applied in fix cycle 1, including
+phone-local joining, explicit completed-step labels, cable direction and consistent
+wording. The shortened Ready choice explanations remain unchanged. The owner
+wording questions above remain available for review.
 
 ## Screenshot coverage
 
@@ -92,49 +95,51 @@ under [screenshots/et/](screenshots/et/):
   explanation and reset action.
 - `wifi_off_light*.png`: Wi-Fi off Home and reset action.
 - `not_found_light*.png`: connection guidance, cable, Android dialog and actions.
-- `reset_guide_light*.png`: reset warning, press, light, waiting and check action.
+- `reset_guide_light*.png`: reset warning, press, light, waiting and Back action.
 - `wifi_password_light*.png`: input rules, saved profile, password entry, show/hide
   and review actions; visible-password shots use fictional credentials.
 - `wifi_on_confirm_light*.png`: consequences, restart, Android dialog and actions.
 
-Numbered `_step_N` images show successive scroll positions; `_visible` shows the
+Numbered `_step_N` images show checkpoint scroll positions (reset ends at Back); `_visible` shows the
 password after the explicit show action. Long pages intentionally scroll. The
 tests also check text layout overflow and minimum 48 dp click targets, and verify
 that opening or cancelling confirmation does not invoke its confirm callback.
 
 ## Verification
 
-Run on 2026-10-19 with `ANDROID_HOME=/home/dev/android-sdk`:
+Fix cycle 1, run on 2026-10-19 after rebasing onto `ff3de6d`, with `ANDROID_HOME=/home/dev/android-sdk`:
 
 ```sh
 ./gradlew :protocol:test :app:testDebugUnitTest :app:verifyRoborazziDebug :app:lintDebug :app:assembleDebug
 /home/dev/android-sdk/build-tools/37.0.0/aapt2 dump badging app/build/outputs/apk/debug/app-debug.apk
 ```
 
-- Build: successful (60 tasks; 15 executed, 45 up-to-date on the final run).
-- Protocol: **52 tests**, no failures, errors or skips.
-- App: **453 tests**, including 14 new Estonian screenshot/layout cases; no failures,
+- Build: successful in 30 seconds (60 tasks; 13 executed, 47 up-to-date).
+- Protocol: **52 tests** in 5 suites, no failures, errors or skips.
+- App: **458 tests** in 30 suites, including 14 Estonian screenshot/layout cases; no failures,
   errors or skips.
 - Roborazzi: **335 unchanged comparisons**: 279 existing English and 56 Estonian.
   Zero added, changed or recorded images during verification. English baseline
   files have no diff.
 - Lint: **0 errors, 21 warnings**. The Android 13-only `localeConfig` warning is
   expected with minSdk 29; the other warnings concern existing code/resources.
-- Missing-translation negative check: temporarily removing Estonian `ready_title`
-  made `:app:lintDebug` exit 1 with exactly one `MissingTranslation` error for
-  `et`. The resource was restored byte for byte before the successful final suite.
-- APK badging: `locales: '--_--' 'en' 'et'`.
-- Resource audit: 186/186 translations, format arguments match, all 196 original
+- MissingTranslation: **0 issues**; all **187/187** translatable base strings have
+  Estonian entries, including the new `reset_checking` and updated `reset_wait`.
+- APK badging: `locales: '--_--' 'et'`. English uses the default resources
+  (`--_--`); `localeFilters` and `locales_config.xml` still specify `en` and `et`.
+- Resource audit: 187/187 translations, format arguments match, all 197 rebased
   English values unchanged. Store short description: 79/80 characters; changelogs
   1 and 2: 455 and 398 characters.
-- Visual inspection: all **56 PNGs** reviewed, including scrolled sections and
-  200% text. No clipped labels or overflowing text; long pages scroll. The two
-  Ready choice explanations were shortened to keep their text inside the rounded
-  buttons. All tested click targets are at least 48 dp in both dimensions.
+- Targeted recording: **6 tests**, **28 captures**, **17 changed Estonian PNGs**.
+  Only `notFound*`, `reset*` and `confirm*` were selected. The reset fixture now
+  checks Back because #32 removed Check again. No English baselines changed.
+- Visual inspection: all **6 changed 200% PNGs** and the normal-size cable, reset
+  wait and confirmation checkpoints were re-inspected. Corrected text fits;
+  long pages scroll. Text-layout overflow and minimum 48 dp touch-target checks
+  passed. The shortened Ready choice explanations remain unchanged.
 
 No real Mini was contacted. Product Kotlin, protocol, CI, signing and versions
-were not changed. The independent language review above remains a before-merge
-follow-up, not a claim made by the test suite.
+were not changed. Automated tests do not replace human language or hardware checks.
 
 A human may additionally check Android 13+ Settings → Apps → Mini Wi-Fi Switch →
 Language: select Estonian, return to the app, then select English. On older Android,

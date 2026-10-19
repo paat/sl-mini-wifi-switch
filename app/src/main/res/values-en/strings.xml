@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <!-- Keep identical to values/strings.xml. This entry makes en explicit in the APK;
-         all other English strings use the default resources. -->
-    <string name="ready_title">Ready to set up</string>
-</resources>

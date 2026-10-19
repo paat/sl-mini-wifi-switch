@@ -90,7 +90,7 @@ class EstonianScreenshotsTest {
             ResetGuideScreen({}, animateGuides = false)
         }
         captureWithCheckpoints("reset_guide", scale, listOf(
-            R.string.reset_press, R.string.reset_light, R.string.reset_wait, R.string.check_again,
+            R.string.reset_press, R.string.reset_light, R.string.reset_wait, R.string.back,
         ))
         assertLayoutAndTouchTargets()
     }

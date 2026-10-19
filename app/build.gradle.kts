@@ -71,8 +71,6 @@ android {
 
     androidResources {
         localeFilters += listOf("en", "et")
-        // Retain the explicit English entry even though it equals the default wording.
-        additionalParameters += "--no-resource-deduping"
     }
 
     lint {
