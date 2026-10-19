@@ -49,7 +49,8 @@ the [M4 PNG list](docs/screenshots/m4/manifest.txt) and
 [test counts and human checks](docs/screenshots/m4/verification.txt).
 Record only M4 with `:app:recordRoborazziDebug --tests '*FieldGuideScreenshotsTest'`.
 Normal `build test` runs render and action assertions without recording or comparing
-pixels, so CI font differences do not fail the suite. App unit tests run on the JVM; screenshot tests use a debug-only Compose host.
+pixels. CI also runs `:app:verifyRoborazziDebug`, which fails when a committed PNG drifts.
+App unit tests run on the JVM; screenshot tests use a debug-only Compose host.
 
 The app uses sockets on the selected network, with no process-wide binding,
 DNS lookups, redirects, proxies, analytics, or remote services. It reads only

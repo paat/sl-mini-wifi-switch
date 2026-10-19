@@ -1,5 +1,6 @@
 package eu.tsernikov.slminiwifi.ui
 
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
@@ -169,7 +170,10 @@ class WifiOnScreenshotsTest {
     private fun show(dark: Boolean, fontScale: Float = 1f, content: @Composable () -> Unit) {
         compose.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale)) {
-                MiniTheme(darkTheme = dark, content = content)
+                // Pressed-state ripples use wall-clock fade and change between runs.
+                MiniTheme(darkTheme = dark) {
+                    CompositionLocalProvider(LocalRippleConfiguration provides null, content = content)
+                }
             }
         }
     }

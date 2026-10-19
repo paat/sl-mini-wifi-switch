@@ -61,9 +61,10 @@ class ScreenshotsTest {
         var chosen: Boolean? = null
         show(dark = false, fontScale = 2f) {
             HomeScreen(MiniSnapshot(MiniState.SetupPending), onRefresh = {}, onConnect = {},
-                onDetails = {}, onSetupChoice = { chosen = it }, animateGuides = false)
+                onDetails = {}, onSetupChoice = { chosen = it }, animateGuides = false, onHelp = {})
         }
         capture("home_setup_pending_font_200")
+        compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Wi-Fi off").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(true, chosen)
         compose.onNodeWithText("Wi-Fi on with password").performScrollTo().assertIsDisplayed().performClick()
@@ -74,7 +75,7 @@ class ScreenshotsTest {
         var connects = 0
         show(dark) {
             HomeScreen(MiniSnapshot(state, sampleDetails), onRefresh = {}, onConnect = { connects++ },
-                onDetails = {}, onSetupChoice = {}, animateGuides = false)
+                onDetails = {}, onSetupChoice = {}, animateGuides = false, onHelp = {})
         }
         if (state == MiniState.Rebooting) compose.mainClock.advanceTimeBy(400)
         val name = "home_${when (state) {
@@ -92,6 +93,11 @@ class ScreenshotsTest {
             MiniState.Rebooting, MiniState.NotFound -> "Check again"
         }
         compose.onNodeWithText(nextStep).performScrollTo().assertIsDisplayed().assertHasClickAction()
+        val resetHelp = when (state) {
+            MiniState.Configured, MiniState.Bypass, MiniState.Unknown -> "How to reset the Mini"
+            else -> "Reset help"
+        }
+        compose.onNodeWithText(resetHelp).performScrollTo().assertIsDisplayed().assertHasClickAction()
         if (state == MiniState.NotFound) {
             compose.onNodeWithText("Join STARLINK").performScrollTo().assertIsDisplayed().performClick()
             assertEquals(1, connects)
@@ -103,10 +109,12 @@ class ScreenshotsTest {
         var checks = 0
         show(dark) {
             HomeScreen(MiniSnapshot(MiniState.NotFound, probeTimedOut = true),
-                onRefresh = { checks++ }, onConnect = {}, onDetails = {}, onSetupChoice = {}, animateGuides = false)
+                onRefresh = { checks++ }, onConnect = {}, onDetails = {}, onSetupChoice = {},
+                animateGuides = false, onHelp = {})
         }
         capture("home_check_timed_out_${theme(dark)}")
         compose.onNodeWithText("We could not check your Mini").assertIsDisplayed()
+        compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Check again").performScrollTo().performClick()
         assertEquals(1, checks)
     }
@@ -116,9 +124,10 @@ class ScreenshotsTest {
         show(dark) {
             HomeScreen(MiniSnapshot(MiniState.Configured, sampleDetails), onRefresh = {}, onConnect = {},
                 onDetails = {}, onSetupChoice = {}, animateGuides = false, onGuide = {},
-                onShowCredentials = { opens++ }, savedWifiName = "Field Mini")
+                onShowCredentials = { opens++ }, savedWifiName = "Field Mini", onHelp = {})
         }
         capture("home_saved_password_${theme(dark)}")
+        compose.onNodeWithText("How to reset the Mini").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Show my Wi-Fi password").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(1, opens)
     }
