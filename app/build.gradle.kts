@@ -69,6 +69,16 @@ android {
         compose = true
     }
 
+    androidResources {
+        localeFilters += listOf("en", "et")
+        // Retain the explicit English entry even though it equals the default wording.
+        additionalParameters += "--no-resource-deduping"
+    }
+
+    lint {
+        error += "MissingTranslation"
+    }
+
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
@@ -78,6 +88,7 @@ android {
             it.systemProperty("m3.screenshots.dir", rootProject.file("docs/screenshots/m3").absolutePath)
             it.systemProperty("m4.screenshots.dir", rootProject.file("docs/screenshots/m4").absolutePath)
             it.systemProperty("m5.screenshots.dir", rootProject.file("docs/screenshots/m5-status").absolutePath)
+            it.systemProperty("et.screenshots.dir", rootProject.file("docs/screenshots/et").absolutePath)
             it.maxHeapSize = "2g"
         }
     }
