@@ -29,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -138,25 +139,25 @@ fun HomeScreen(
         }
         when (state) {
             MiniState.SetupPending -> {
-                PrimaryButton(R.string.wifi_off, { onSetupChoice(true) })
-                PrimaryButton(R.string.wifi_secure, { onSetupChoice(false) })
-                onGuide?.let { SecondaryButton(R.string.field_start_here, it) }
-                SecondaryButton(R.string.details, onDetails)
-                SecondaryButton(R.string.check_again, onRefresh, !isChecking)
+                SetupChoiceButton(R.string.wifi_off, R.string.wifi_off_choice_body) { onSetupChoice(true) }
+                SetupChoiceButton(R.string.wifi_secure, R.string.wifi_secure_choice_body) { onSetupChoice(false) }
+                TextButton(onClick = onDetails, modifier = Modifier.heightIn(min = 48.dp)) {
+                    Text(stringResource(R.string.details))
+                }
+                return@Screen
             }
             MiniState.Configured, MiniState.Bypass, MiniState.Unknown -> {
                 Text(stringResource(R.string.home_reset_note))
                 onHelp?.let { PrimaryButton(R.string.home_reset_guide, it) }
                 SecondaryButton(R.string.details, onDetails)
-                SecondaryButton(R.string.check_again, onRefresh, !isChecking)
             }
-            MiniState.Rebooting -> SecondaryButton(R.string.check_again, onRefresh, !isChecking)
+            MiniState.Rebooting -> Unit
             MiniState.NotFound -> {
                 GuideCard {
                     Subheading(stringResource(R.string.cable_title))
                     CableIllustration(animateGuides)
                     Text(stringResource(R.string.cable_body))
-                    PrimaryButton(R.string.check_again, onRefresh, !isChecking)
+                    if (!isChecking && !isConnecting) PrimaryButton(R.string.check_again, onRefresh)
                 }
                 GuideCard {
                     Subheading(stringResource(R.string.wifi_title))
@@ -166,7 +167,7 @@ fun HomeScreen(
                 }
             }
         }
-        if (state != MiniState.Configured && state != MiniState.Bypass && state != MiniState.Unknown) {
+        if (state == MiniState.NotFound || state == MiniState.Rebooting) {
             onHelp?.let { SecondaryButton(R.string.field_reset_help, it) }
         }
         Text(
@@ -174,6 +175,17 @@ fun HomeScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+@Composable
+private fun SetupChoiceButton(@StringRes title: Int, @StringRes explanation: Int, onClick: () -> Unit) {
+    Button(onClick = onClick, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+        contentPadding = PaddingValues(20.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(title), style = MaterialTheme.typography.titleMedium)
+            Text(stringResource(explanation), style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

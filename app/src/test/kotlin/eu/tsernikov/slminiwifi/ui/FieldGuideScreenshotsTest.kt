@@ -133,14 +133,21 @@ class FieldGuideScreenshotsTest {
             compose.onNodeWithText("Start here").assertDoesNotExist()
             compose.onNodeWithText("Waiting for the Mini to answer").performScrollTo().assertIsDisplayed()
             compose.onNodeWithText("We will check every 3 seconds", substring = true).performScrollTo().assertIsDisplayed()
+        } else if (state == MiniState.NotFound) {
+            compose.onNodeWithText("Start here").performScrollTo().assertHeightIsAtLeast(64.dp).performClick()
         } else {
-            compose.onNodeWithText("Start here").performScrollTo()
-                .assertHeightIsAtLeast(if (state == MiniState.SetupPending) 48.dp else 64.dp).performClick()
+            compose.onNodeWithText("Start here").assertDoesNotExist()
         }
-        compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed().performClick()
-        capture("${name}_help")
-        assertEquals(if (state == MiniState.Rebooting) 0 else 1, guides)
-        assertEquals(1, helps)
+        if (state == MiniState.SetupPending) {
+            compose.onNodeWithText("Reset help").assertDoesNotExist()
+            compose.onNodeWithText("Details").performScrollTo().assertIsDisplayed()
+            capture("${name}_details")
+        } else {
+            compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed().performClick()
+            capture("${name}_help")
+        }
+        assertEquals(if (state == MiniState.NotFound) 1 else 0, guides)
+        assertEquals(if (state == MiniState.SetupPending) 0 else 1, helps)
         checkFieldSizesAndText()
     }
 
@@ -202,6 +209,21 @@ class FieldGuideScreenshotsTest {
         checkFieldSizesAndText()
         compose.onNodeWithText("Back").performScrollTo().performClick()
         assertEquals(1, back)
+    }
+
+    @Test fun resetWaitingLight() = resetWaiting(false)
+    @Test fun resetWaitingDark() = resetWaiting(true)
+    @Test fun resetWaitingLargeLight() = resetWaiting(false, 2f)
+    @Test fun resetWaitingLargeDark() = resetWaiting(true, 2f)
+
+    private fun resetWaiting(dark: Boolean, fontScale: Float = 1f) {
+        compose.show(dark, fontScale) {
+            ResetGuideScreen({}, animateGuides = false, state = MiniState.Rebooting)
+        }
+        capture("reset_waiting_${suffix(dark, fontScale)}")
+        compose.onNodeWithText("Waiting for your Mini to restart…").assertIsDisplayed()
+        compose.onNodeWithText("Check again").assertDoesNotExist()
+        checkFieldSizesAndText()
     }
 
     private fun help(dark: Boolean, fontScale: Float = 1f) {

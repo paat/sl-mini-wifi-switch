@@ -14,7 +14,6 @@ import eu.tsernikov.slminiwifi.data.Profile
 import eu.tsernikov.slminiwifi.data.WifiRules
 import eu.tsernikov.slminiwifi.net.AndroidWifiAutoConnect
 import eu.tsernikov.slminiwifi.net.WifiAutoConnect
-import eu.tsernikov.slminiwifi.state.MiniState
 import eu.tsernikov.slminiwifi.state.WifiOffError
 import eu.tsernikov.slminiwifi.ui.DetailsScreen
 import eu.tsernikov.slminiwifi.ui.GuideStep
@@ -99,9 +98,7 @@ class MainActivity : ComponentActivity() {
                             onConnect = { requestAccess(PermissionAction.Connect) },
                             onDetails = { detailsReturn = Screen.Home; screen = Screen.Details },
                             onSetupChoice = { wifiOff ->
-                                if (snapshot.state == MiniState.SetupPending) {
-                                    if (wifiOff) openWifiOff() else openWifiOn()
-                                }
+                                if (wifiOff) openWifiOff() else openWifiOn()
                             },
                             onPermissions = openSettings,
                         )
@@ -156,7 +153,8 @@ class MainActivity : ComponentActivity() {
                             onNext = {
                             if (wifiOffError == WifiOffError.AlreadySetUp) openHelp() else returnHome()
                         })
-                        Screen.ResetGuide -> ResetGuideScreen(onDone = ::checkAfterHelp, onBack = ::closeHelp)
+                        Screen.ResetGuide -> ResetGuideScreen(onDone = ::checkAfterHelp, onBack = ::closeHelp,
+                            state = snapshot.state, isChecking = checking)
                         Screen.FieldGuide -> GuideStepScreen(
                             step = guideStep, onBack = ::guideBack, onNext = ::guideNext,
                             onUseWifi = { guideStep = GuideStep.Wifi },

@@ -76,7 +76,7 @@ address, a readable dish at `192.168.100.1`, and a `100.64.0.0/10` address. When
 interface. Any router HTTP response (even malformed or refused) prevents success.
 Loss of setup Wi-Fi is labelled likely success only after an acknowledged write or after the request body was transmitted; a replacement STARLINK handle prevents that inference. A device refusal takes precedence over a dropped connection.
 
-A retained ViewModel owns flow state, the app-local network request, and bounded verification. Activity stop pauses Home polling only; the request stays owned by the ViewModel across rotation and temporary backgrounding. Finishing the app task clears the ViewModel and closes the request; explicit flow release also closes it. Rotation and backgrounding preserve an in-flight operation; neither creates another send. Returning to editing or confirmation keeps the form and re-probes existing networks before enabling Confirm. A missing connection offers Reconnect to the Mini; that tap first re-reads available networks in Ethernet-first order and requests Android’s Connect dialog only if none reaches the Mini. Declining it keeps the typed name and password. Connection failures and the Open phone settings action appear on the current editing or confirmation screen, as on Home. Screen changes and successful detection retire old connection feedback through one shared reset, retaining a permission denial only while access is still missing. Both confirmation choices use the same permission and connection gate. Probe and Wi-Fi jobs are assigned before they start, including with Main.immediate, so explicit navigation can cancel the active request. Intentional network release clears recent reachability only outside an active restart wait. Probe timeout and backgrounding preserve the original restart deadline. Process death never restores a write: interrupted progress opens reconnect guidance, and an unsent confirmation never claims a write failed.
+A retained ViewModel owns flow state, the app-local network request, and bounded verification. Activity stop pauses Home/reset-guide polling only; the request stays owned by the ViewModel across rotation and temporary backgrounding. Finishing the app task clears the ViewModel and closes the request; explicit flow release also closes it. Rotation and backgrounding preserve an in-flight operation; neither creates another send. Returning to editing or confirmation keeps the form and re-probes existing networks before enabling Confirm. A missing connection offers Reconnect to the Mini; that tap first re-reads available networks in Ethernet-first order and requests Android’s Connect dialog only if none reaches the Mini. Declining it keeps the typed name and password. Connection failures and the Open phone settings action appear on the current editing or confirmation screen, as on Home. Screen changes and successful detection retire old connection feedback through one shared reset, retaining a permission denial only while access is still missing. Both confirmation choices use the same permission and connection gate. Probe and Wi-Fi jobs are assigned before they start, including with Main.immediate, so explicit navigation can cancel the active request. Intentional network release clears recent reachability only outside an active restart wait. Probe timeout and backgrounding preserve the original restart deadline. Process death never restores a write: interrupted progress opens reconnect guidance, and an unsent confirmation never claims a write failed.
 
 The secure-Wi-Fi flow also pins the connection that reported setup pending. It saves
 one profile encrypted with an Android Keystore AES-256-GCM key before sending a
@@ -120,11 +120,23 @@ wait, and either cable connection or STARLINK plus Android's Connect dialog. Its
 last step returns to existing state detection. Back retraces the selected path;
 the step survives activity recreation without restoring any pending write.
 **Reset help** is an offline card reachable from Home and every error presentation.
-It explains that reset removes the saved Wi-Fi name/password and offers both Back
-and Check again. From a result, both return to that result so credentials remain
-visible. Guide step changes start at the top, including Back and alternate paths.
+It explains that reset removes the saved Wi-Fi name/password. Home and Reset help
+poll read-only every 3 seconds while foregrounded. The screen setter applies the
+same polling eligibility gate as start(), and stop() cancels it. Every other screen,
+including all Start here pages, editing, confirmations and writes, cancels Home polling.
+SetupPending automatically opens Home from Reset help; no tap or write is involved.
+Rebooting keeps visible progress for the existing three-minute deadline, including
+across stop/start. NotFound ends polling and offers Check again; other states have
+no manual retry. Reset help's Back preserves its origin, including saved credentials;
+its stopped-check retry also returns to a result when opened from that result.
+Guide step changes start at the top, including Back and alternate paths.
 Home keeps restart waiting prominent without a Start here reset action while polling.
-Reading the guide/help does not start network work.
+The Start here pages remain offline and do not start network work.
+
+SetupPending Home says **Ready to set up** and explains that the Mini was reset.
+Its two large choices explain cable-only use or a Wi-Fi name/password; Details is
+a small secondary action. Start here, Reset help, Check again and the read-only
+footer are absent in this state.
 
 All illustrations are project-drawn bundled vectors, animated as separate vector
 layers. The reset press holds for three seconds; the illustrative light sequence

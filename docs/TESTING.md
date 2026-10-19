@@ -63,7 +63,7 @@ Run the following twice, with a fresh physical factory reset before **each** run
    (or use the app's Join STARLINK action and Android's Connect confirmation).
 2. Press the reset icon on the back until it clicks; hold about 3 seconds until the
    LED blinks fast and goes off. Wait for `192.168.1.1` to answer (35–110 seconds
-   observed), with `setup_complete` false. The app must say “Your Mini is ready”.
+   observed), with `setup_complete` false. The app must say “Ready to set up”.
 3. Choose Wi-Fi off. Check the no-Wi-Fi/no-local-network warning, router requirement,
    and reset-to-undo wording. On Wi-Fi, also check the expected disconnection warning.
    Tap Cancel first: the Mini must remain pending with STARLINK available.
@@ -95,7 +95,7 @@ physical factory reset before each write. Do not also send the curl vector.
    STARLINK (including Android's Connect confirmation if requested).
 2. Press the reset icon on the back until it clicks, hold about 3 seconds until
    the LED blinks fast and goes off. Wait for `192.168.1.1` to answer (35–110 seconds
-   observed), with `setup_complete` false and “Your Mini is ready” in the app.
+   observed), with `setup_complete` false and “Ready to set up” in the app.
 3. Choose **Wi-Fi on with password**. Check the generated name/password, show/hide,
    own-password option, and rules before typing. Cancel the confirmation first:
    STARLINK must stay open and setup must remain pending. Reopen, review the name,
@@ -393,3 +393,143 @@ These checks are read-only and do not require a setup write:
 
 Physical Mini checks, real-device TalkBack and outdoor usability remain unperformed.
 CI workflows, signing, versions and protocol messages were not changed.
+
+
+## Configuration-first Home (#32)
+
+Automated tests use fake transports only. `ConfigurationHomeTest` covers the exact
+Configured → silent/Rebooting → SetupPending sequence through the ViewModel from
+both Home and Reset help, stop/start, Activity recreation, every other screen and
+every Start here page, suspended-probe cancellation, and the original restart
+deadline. `ConfigurationHomeScreenTest` covers the title, body, explained choices,
+small Details target, removed controls/footer, all Home retry states, restart
+progress and guide/icon wording. Existing field accessibility tests check 200% text.
+
+Before implementation the initial 16 tests produced 13 failures (5 ViewModel,
+8 UI), with no errors/skips. The Home-only reset sequence and two stopped-check
+retry UI tests already passed. Deadline, suspended-probe and progress-display
+checks were added afterward; no pre-fix failure is claimed for those checks.
+A later scroll regression was also run red (1 test, 1 failure) before fixing it:
+restart progress now comes into view even when Reset help was scrolled to the bottom.
+Bypass and Unknown continuous-polling checks were added as preservation tests.
+The earlier cable-after-failed-join test now explicitly taps Check again, because
+NotFound ends polling. No protocol or device-write behavior changed.
+
+Human checks (not performed):
+
+1. Connect by Ethernet to a configured Mini and open How to reset the Mini.
+   Perform the physical reset from M2 step 2 above. Leave this guide open; expect
+   “Waiting for your Mini to restart…” with progress, then “Ready to set up” Home
+   automatically, with both explained choices and a small Details action.
+2. Repeat while staying on Home. Rotate and briefly background/return during the
+   wait. The original three-minute deadline must remain; no setup write occurs.
+3. Repeat over Wi-Fi, joining STARLINK through Android if the previous connection
+   disappears. If checking times out, connect the cable or join STARLINK and tap
+   Check again. Confirm there is no Check again during automatic checking.
+4. Use TalkBack and 200% fonts in both themes. Check the choice explanations and
+   icon description, and ensure password editing, confirmation and every Start here
+   page keep their context. Do not confirm a setup write for this read-only check.
+5. Record date, firmware versions, connection path and actual reset/reconnect timing
+   in FINDINGS.md only after a human completes these checks.
+
+### Final software validation (2026-10-19)
+
+Command (with `ANDROID_HOME=/home/dev/android-sdk`):
+
+```sh
+./gradlew :protocol:test :app:testDebugUnitTest :app:verifyRoborazziDebug :app:lintDebug :app:assembleDebug
+```
+
+Output: `BUILD SUCCESSFUL in 39s`; `60 actionable tasks: 28 executed, 32 up-to-date`.
+JUnit XML: **434 app tests / 29 suites**, **52 protocol tests / 5 suites**;
+**486 tests / 34 suites**, **0 failures, 0 errors, 0 skipped**. The two new
+regression classes contain 24 tests, with four additional restart-guide screenshot
+cases. Roborazzi: **279 comparisons, 279 unchanged, 0 added, 0 changed** in the
+final verification. Lint: **0 errors, 20 warnings**. Debug APK assembled.
+
+Flow/action guard accounting: **4 added, 4 removed, net 0**. Added: SetupPending
+auto-navigation, NotFound polling termination, and stopped-check visibility for the
+two retry controls. Removed: the redundant Activity setup-state precheck, the
+closeHelp Home-only restart gate, and the duplicated connection-null and
+pending/present gates by sharing setup-choice entry. The same write/confirmation
+validation remains. Five scattered polling cancellations now belong to the screen
+setter's existing eligibility gate; start()/stop() still own foreground lifetime.
+
+Only the 42 screenshot tests whose verification differed were selected for
+`recordRoborazziDebug`. They passed; byte-identical captures are not part of the
+diff. Updated **62 existing PNGs**, added **4 restart-wait PNGs**, and replaced
+**2 obsolete setup-help captures with 2 Details captures**. Exact manifest below
+(`M` updated, `A` added, `D` removed); no unrelated baselines were changed.
+
+```text
+M docs/screenshots/m1/home_configured_dark.png
+M docs/screenshots/m1/home_configured_light.png
+M docs/screenshots/m1/home_rebooting_dark.png
+M docs/screenshots/m1/home_rebooting_light.png
+M docs/screenshots/m1/home_saved_password_dark.png
+M docs/screenshots/m1/home_saved_password_light.png
+M docs/screenshots/m1/home_setup_pending_dark.png
+M docs/screenshots/m1/home_setup_pending_font_200.png
+M docs/screenshots/m1/home_setup_pending_light.png
+M docs/screenshots/m1/home_wifi_off_dark.png
+M docs/screenshots/m1/home_wifi_off_light.png
+M docs/screenshots/m2/reset_guide_dark_actions.png
+M docs/screenshots/m2/reset_guide_light_actions.png
+M docs/screenshots/m2/reset_guide_light_font_200_actions.png
+M docs/screenshots/m4/guide_check_dark.png
+M docs/screenshots/m4/guide_check_dark_actions.png
+M docs/screenshots/m4/guide_check_dark_font_200.png
+M docs/screenshots/m4/guide_check_dark_font_200_actions.png
+M docs/screenshots/m4/guide_check_dark_font_200_illustration.png
+M docs/screenshots/m4/guide_check_light.png
+M docs/screenshots/m4/guide_check_light_actions.png
+M docs/screenshots/m4/guide_check_light_font_200.png
+M docs/screenshots/m4/guide_check_light_font_200_actions.png
+M docs/screenshots/m4/guide_check_light_font_200_illustration.png
+M docs/screenshots/m4/home_rebooting_dark.png
+M docs/screenshots/m4/home_rebooting_dark_help.png
+M docs/screenshots/m4/home_rebooting_light.png
+M docs/screenshots/m4/home_rebooting_light_help.png
+M docs/screenshots/m4/home_setuppending_dark.png
+D docs/screenshots/m4/home_setuppending_dark_help.png
+M docs/screenshots/m4/home_setuppending_light.png
+D docs/screenshots/m4/home_setuppending_light_help.png
+M docs/screenshots/m4/offline_help_dark_actions.png
+M docs/screenshots/m4/offline_help_dark_font_200_actions.png
+M docs/screenshots/m4/offline_help_light_actions.png
+M docs/screenshots/m4/offline_help_light_font_200_actions.png
+M docs/screenshots/m5-status/bypass_dark.png
+M docs/screenshots/m5-status/bypass_dark_actions.png
+M docs/screenshots/m5-status/bypass_dark_font_200.png
+M docs/screenshots/m5-status/bypass_dark_font_200_actions.png
+M docs/screenshots/m5-status/bypass_light.png
+M docs/screenshots/m5-status/bypass_light_actions.png
+M docs/screenshots/m5-status/bypass_light_font_200.png
+M docs/screenshots/m5-status/bypass_light_font_200_actions.png
+M docs/screenshots/m5-status/configured_hidden_dark.png
+M docs/screenshots/m5-status/configured_hidden_dark_actions.png
+M docs/screenshots/m5-status/configured_hidden_dark_password.png
+M docs/screenshots/m5-status/configured_hidden_light.png
+M docs/screenshots/m5-status/configured_hidden_light_actions.png
+M docs/screenshots/m5-status/configured_hidden_light_password.png
+M docs/screenshots/m5-status/configured_saved_dark.png
+M docs/screenshots/m5-status/configured_saved_dark_actions.png
+M docs/screenshots/m5-status/configured_saved_dark_password.png
+M docs/screenshots/m5-status/configured_saved_light.png
+M docs/screenshots/m5-status/configured_saved_light_actions.png
+M docs/screenshots/m5-status/configured_saved_light_password.png
+M docs/screenshots/m5-status/unknown_dark.png
+M docs/screenshots/m5-status/unknown_dark_actions.png
+M docs/screenshots/m5-status/unknown_dark_font_200.png
+M docs/screenshots/m5-status/unknown_dark_font_200_actions.png
+M docs/screenshots/m5-status/unknown_light.png
+M docs/screenshots/m5-status/unknown_light_actions.png
+M docs/screenshots/m5-status/unknown_light_font_200.png
+M docs/screenshots/m5-status/unknown_light_font_200_actions.png
+A docs/screenshots/m4/home_setuppending_dark_details.png
+A docs/screenshots/m4/home_setuppending_light_details.png
+A docs/screenshots/m4/reset_waiting_dark.png
+A docs/screenshots/m4/reset_waiting_dark_font_200.png
+A docs/screenshots/m4/reset_waiting_light.png
+A docs/screenshots/m4/reset_waiting_light_font_200.png
+```

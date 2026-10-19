@@ -325,9 +325,10 @@ class SetupViewModelNetworkTest {
             request.onUnavailable()
             testScheduler.runCurrent()
             assertEquals(R.string.connection_failed, model.message)
+            assertFalse(model.polling!!.isActive)
             addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
             model.transportFactory = { _, _ -> ReadOnlyTransport() }
-            testScheduler.advanceTimeBy(3_000)
+            model.requestAccess(SetupViewModel.PermissionAction.Check)
             testScheduler.runCurrent()
             assertEquals(MiniState.SetupPending, model.snapshot.state)
             org.junit.Assert.assertNull(model.message)

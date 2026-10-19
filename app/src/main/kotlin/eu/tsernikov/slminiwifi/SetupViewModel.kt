@@ -107,6 +107,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             if (currentScreen != value) {
                 currentScreen = value
                 clearConnectionFeedback()
+                startPolling(showProgress = true)
             }
         }
     var checking by mutableStateOf(false)
@@ -215,7 +216,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     fun stop() {
         foreground = false
         polling?.cancel()
-        // Activity visibility only controls Home polling. Requests and operations belong to
+        // Activity visibility only controls Home/reset-guide polling. Requests and operations belong to
         // this model and are released by explicit flow actions or onCleared, never rotation.
     }
 
@@ -230,7 +231,6 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
 
     fun openGuide() {
         screen = Screen.FieldGuide
-        polling?.cancel()
         connecting?.cancel()
         confirmedConnection = null
         guideStep = GuideStep.Reset
@@ -261,7 +261,6 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     fun openHelp() {
         helpReturn = screen
         screen = Screen.ResetGuide
-        polling?.cancel()
         connecting?.cancel()
     }
 
@@ -278,7 +277,6 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
 
     fun closeHelp() {
         screen = helpReturn
-        if (screen == Screen.Home) startPolling(showProgress = true)
     }
 
     fun checkAfterHelp() {
@@ -304,24 +302,29 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         startPolling(showProgress = true)
     }
 
-    fun openWifiOn() {
-        secureFlow = true
+    fun openWifiOn() = openSetupChoice(wifiOff = false)
+
+    fun openWifiOff() = openSetupChoice(wifiOff = true)
+
+    private fun openSetupChoice(wifiOff: Boolean) {
         val connection = detectedConnection ?: return
         if (snapshot.state != MiniState.SetupPending || !networks.isPresent(connection)) return
-        polling?.cancel()
+        secureFlow = !wifiOff
         confirmedConnection = connection
         confirmedInterface = networks.interfaceName(connection)
         confirmationIsWifi = !networks.isEthernet(connection)
-        secureConnection = null
-        secureRequestAttempted = false
-        reconnectAvailable = false
-        profileSaved = false
-        wifiVerified = false
-        profile = Profile(generator.name(), generator.password())
-        ownPassword = false
-        profileError = null
-        joinMessage = null
-        screen = Screen.WifiOn
+        screen = if (wifiOff) Screen.WifiOff else {
+            secureConnection = null
+            secureRequestAttempted = false
+            reconnectAvailable = false
+            profileSaved = false
+            wifiVerified = false
+            profile = Profile(generator.name(), generator.password())
+            ownPassword = false
+            profileError = null
+            joinMessage = null
+            Screen.WifiOn
+        }
     }
 
     fun confirmWifiOn() = confirmSetup()
@@ -424,16 +427,6 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         WifiJoinOutcome.UNAVAILABLE -> R.string.wifi_on_connect_failed
     }
 
-    fun openWifiOff() {
-        secureFlow = false
-        val connection = detectedConnection ?: return
-        if (snapshot.state != MiniState.SetupPending || !networks.isPresent(connection)) return
-        polling?.cancel()
-        confirmedConnection = connection
-        confirmedInterface = networks.interfaceName(connection)
-        confirmationIsWifi = !networks.isEthernet(connection)
-        screen = Screen.WifiOff
-    }
 
     private fun writeWifiOff(connection: StarlinkConnection) {
         // Change screen synchronously: a second tap cannot launch a second write.
@@ -593,7 +586,6 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         if (screen == Screen.Home && !canShowHomeCredentials) return
         val saved = savedProfile ?: return
         connecting?.cancel()
-        polling?.cancel()
         profile = saved
         profileSaved = true
         // A stored profile is not evidence that a Mini currently uses it.
@@ -693,8 +685,9 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
 
     fun startPolling(showProgress: Boolean) {
         polling?.cancel()
-        if (!foreground || requestingWifi || !hasLocalAccess() || screen != Screen.Home) return
-        polling = scope.launch {
+        if (!foreground || requestingWifi || !hasLocalAccess() ||
+            screen !in listOf(Screen.Home, Screen.ResetGuide)) return
+        val job = scope.launch(start = CoroutineStart.LAZY) {
             checking = showProgress
             try {
                 while (isActive) {
@@ -707,6 +700,8 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                     snapshot = detected.second
                     rememberDetails(snapshot)
                     checking = false
+                    if (snapshot.state == MiniState.SetupPending) screen = Screen.Home
+                    if (snapshot.state == MiniState.NotFound) break
                     delay(minOf(MiniStateDetector.POLL_INTERVAL_MILLIS,
                         detector.rebootTimeRemainingMillis ?: MiniStateDetector.POLL_INTERVAL_MILLIS))
                 }
@@ -721,5 +716,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                 checking = false
             }
         }
+        polling = job
+        job.start()
     }
 }
