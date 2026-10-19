@@ -21,7 +21,7 @@
     <string name="check_timed_out_body">The check took too long. We do not know your Mini’s settings yet. Keep it powered on and check again, or reconnect.</string>
     <string name="waiting_for_mini">Waiting for the Mini to answer</string>
     <string name="checking">Checking your Mini…</string>
-    <string name="checking_help">This can take up to 1 minute. If it takes longer, try checking again.</string>
+    <string name="checking_help">This can take up to 1 minute.</string>
     <string name="check_again">Check again</string>
     <string name="details">Details</string>
     <string name="back">Back</string>

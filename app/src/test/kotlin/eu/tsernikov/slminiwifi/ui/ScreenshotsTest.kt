@@ -56,7 +56,7 @@ class ScreenshotsTest {
     @Test fun setupPendingLargeFont() {
         var chosen: Boolean? = null
         compose.show(dark = false, fontScale = 2f) {
-            HomeScreen(MiniSnapshot(MiniState.SetupPending), onRefresh = {}, onConnect = {},
+            HomeScreen(MiniSnapshot(MiniState.SetupPending), isPolling = true, onRefresh = {}, onConnect = {},
                 onDetails = {}, onSetupChoice = { chosen = it }, animateGuides = false, onHelp = {})
         }
         capture("home_setup_pending_font_200")
@@ -70,7 +70,8 @@ class ScreenshotsTest {
     private fun home(state: MiniState, dark: Boolean) {
         var connects = 0
         compose.show(dark) {
-            HomeScreen(MiniSnapshot(state, sampleDetails), onRefresh = {}, onConnect = { connects++ },
+            HomeScreen(MiniSnapshot(state, sampleDetails), isPolling = state != MiniState.NotFound,
+                onRefresh = {}, onConnect = { connects++ },
                 onDetails = {}, onSetupChoice = {}, animateGuides = false, onHelp = {})
         }
         if (state == MiniState.Rebooting) compose.mainClock.advanceTimeBy(400)
@@ -120,7 +121,7 @@ class ScreenshotsTest {
     private fun savedPasswordHome(dark: Boolean) {
         var opens = 0
         compose.show(dark) {
-            HomeScreen(MiniSnapshot(MiniState.Configured, sampleDetails), onRefresh = {}, onConnect = {},
+            HomeScreen(MiniSnapshot(MiniState.Configured, sampleDetails), isPolling = true, onRefresh = {}, onConnect = {},
                 onDetails = {}, onSetupChoice = {}, animateGuides = false, onGuide = {},
                 onShowCredentials = { opens++ }, savedWifiName = "Field Mini", onHelp = {})
         }

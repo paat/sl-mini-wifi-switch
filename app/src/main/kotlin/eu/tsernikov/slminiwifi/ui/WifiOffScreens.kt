@@ -181,13 +181,24 @@ fun ResetGuideScreen(
     onBack: () -> Unit,
     animateGuides: Boolean = true,
     autoDetect: Boolean = false,
+    isPolling: Boolean = false,
+    @StringRes message: Int? = null,
+    onRefresh: () -> Unit = {},
+    onPermissions: (() -> Unit)? = null,
+    @StringRes permissionsLabel: Int = R.string.open_phone_settings,
 ) {
     Screen {
         SecondaryButton(R.string.back, onBack)
         Heading(stringResource(R.string.reset_title))
-        if (autoDetect) {
-            WaitingProgress(animateGuides)
-            Text(stringResource(R.string.reset_checking))
+        when {
+            autoDetect && isPolling -> {
+                WaitingProgress(animateGuides)
+                Text(stringResource(R.string.reset_checking))
+            }
+            autoDetect -> {
+                ConnectionFeedback(message, onPermissions, permissionsLabel)
+                PrimaryButton(R.string.check_again, onRefresh)
+            }
         }
         Text(stringResource(R.string.field_offline_note))
         Text(stringResource(R.string.field_reset_warning))

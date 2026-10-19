@@ -124,7 +124,8 @@ class FieldGuideScreenshotsTest {
         var guides = 0
         var helps = 0
         compose.show(dark) {
-            HomeScreen(MiniSnapshot(state), onRefresh = {}, onConnect = {}, onDetails = {},
+            HomeScreen(MiniSnapshot(state), isPolling = state != MiniState.NotFound,
+                onRefresh = {}, onConnect = {}, onDetails = {},
                 onSetupChoice = {}, animateGuides = false, onGuide = { guides++ }, onHelp = { helps++ })
         }
         val name = "home_${state.name.lowercase()}_${suffix(dark, 1f)}"
@@ -217,7 +218,7 @@ class FieldGuideScreenshotsTest {
 
     private fun resetWaiting(dark: Boolean, fontScale: Float = 1f) {
         compose.show(dark, fontScale) {
-            ResetGuideScreen({}, animateGuides = false, autoDetect = true)
+            ResetGuideScreen({}, animateGuides = false, autoDetect = true, isPolling = true)
         }
         capture("reset_waiting_${suffix(dark, fontScale)}")
         compose.onNodeWithText("Waiting for the Mini to answer").assertIsDisplayed()

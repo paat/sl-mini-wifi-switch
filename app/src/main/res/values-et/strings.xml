@@ -20,7 +20,7 @@
     <string name="check_timed_out_body">Kontroll võttis liiga kaua. Mini seaded pole veel teada. Ära lülita Mini välja ja kontrolli uuesti või ühenda uuesti.</string>
     <string name="waiting_for_mini">Ootame Mini vastust</string>
     <string name="checking">Kontrollime Mini…</string>
-    <string name="checking_help">Selleks võib kuluda kuni 1 minut. Kui läheb kauem, kontrolli uuesti.</string>
+    <string name="checking_help">Selleks võib kuluda kuni 1 minut.</string>
     <string name="check_again">Kontrolli uuesti</string>
     <string name="details">Üksikasjad</string>
     <string name="back">Tagasi</string>

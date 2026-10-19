@@ -67,7 +67,8 @@ class EstonianScreenshotsTest {
             ))),
         ) else MiniDetails()
         compose.show(dark = false, fontScale = scale) {
-            HomeScreen(MiniSnapshot(state, details), onRefresh = {}, onConnect = {}, onDetails = {},
+            HomeScreen(MiniSnapshot(state, details), isPolling = state != MiniState.NotFound,
+                onRefresh = {}, onConnect = {}, onDetails = {},
                 onSetupChoice = {}, animateGuides = false, onGuide = {}, onHelp = {})
         }
         val (name, checkpoints) = when (state) {
