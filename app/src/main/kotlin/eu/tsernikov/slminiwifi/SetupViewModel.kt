@@ -15,6 +15,7 @@ import eu.tsernikov.slminiwifi.net.OkHttpTransport
 import eu.tsernikov.slminiwifi.net.StarlinkConnection
 import eu.tsernikov.slminiwifi.net.StarlinkNetworks
 import eu.tsernikov.slminiwifi.net.WifiJoinOutcome
+import eu.tsernikov.slminiwifi.protocol.AuthKind
 import eu.tsernikov.slminiwifi.protocol.ClientResult
 import eu.tsernikov.slminiwifi.protocol.MiniClient
 import eu.tsernikov.slminiwifi.state.MiniSnapshot
@@ -547,7 +548,17 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         )
     }
 
+    val canShowHomeCredentials: Boolean
+        get() {
+            val saved = savedProfile ?: return false
+            if (snapshot.state != MiniState.Configured) return true
+            val matching = snapshot.details.config?.networks.orEmpty()
+                .flatMap { it.basicServiceSets }.filter { it.ssid == saved.name && it.ssid.isNotBlank() }
+            return matching.isNotEmpty() && matching.all { it.authKind != null && it.authKind != AuthKind.OPEN }
+        }
+
     fun showSavedPassword() {
+        if (screen == Screen.Home && !canShowHomeCredentials) return
         val saved = savedProfile ?: return
         connecting?.cancel()
         polling?.cancel()
@@ -565,16 +576,18 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         }
         if (candidates.isEmpty()) return null to detector.detect(null)
         var result = MiniSnapshot(MiniState.NotFound)
+        var unknown: Pair<StarlinkConnection, MiniSnapshot>? = null
         for ((index, connection) in candidates.withIndex()) {
             result = withTransport(connection) {
                 detector.detect(it, connection.routerAddress,
                     ipv4Addresses = if (networks.isEthernet(connection)) networks.ipv4Addresses(connection) else emptyList(),
-                    recordMiss = index == candidates.lastIndex)
+                    recordMiss = index == candidates.lastIndex && unknown == null)
             }
             if (result.state == MiniState.SetupPending || result.state == MiniState.Configured ||
                 result.state == MiniState.Bypass) return connection to result
+            if (result.state == MiniState.Unknown && unknown == null) unknown = connection to result
         }
-        return null to result
+        return unknown ?: (null to result)
     }
 
     fun reacquireConfirmation() {

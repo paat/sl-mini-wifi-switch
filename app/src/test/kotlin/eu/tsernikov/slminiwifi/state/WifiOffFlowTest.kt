@@ -63,6 +63,13 @@ class WifiOffFlowTest {
         requestWritten = { requestWritten },
     )
 
+    @Test fun unknownStateRefusesChangesAndDirectsToResetWithoutRequests() {
+        assertEquals(WifiOffOutcome.Failure(WifiOffError.AlreadySetUp), runCall {
+            flow().confirm(MiniState.Unknown)
+        })
+        assertTrue(fake.calls.isEmpty())
+    }
+
     @Test fun noRequestsBeforeConfirmationAndNoWritesForNonPendingStates() {
         val subject = flow()
         assertTrue(fake.calls.isEmpty())

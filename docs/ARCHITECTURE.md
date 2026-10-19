@@ -21,7 +21,7 @@
 :app        Android
             ├─ net/StarlinkNetworks.kt   find or request the network to talk over
             ├─ net/OkHttpTransport.kt    implements the :protocol transport on a bound Network
-            ├─ state/MiniStateDetector.kt  probes → SetupPending | Configured | Bypass | Rebooting | NotFound
+            ├─ state/MiniStateDetector.kt  probes → SetupPending | Configured | Bypass | Unknown | Rebooting | NotFound
             ├─ data/Profile.kt           saved Wi-Fi name + password (Keystore-encrypted)
             └─ ui/…                      Compose screens
 ```
@@ -48,7 +48,7 @@ The Mini's networks have no internet while the subscription is inactive (and dur
 2. **Setup Wi-Fi:** if the phone is already on `STARLINK`, use that `TRANSPORT_WIFI` network. Otherwise offer to connect with `ConnectivityManager.requestNetwork(NetworkRequest with WifiNetworkSpecifier(ssid = "STARLINK"))`. Android shows its own confirmation dialog; the network stays app-local and doesn't replace the user's Wi-Fi.
 3. Build the OkHttp client with `network.socketFactory` (and a DNS that only resolves literal IPs). Never use `bindProcessToNetwork` for the whole app.
 
-Probe order: each Ethernet candidate first (survives the Wi-Fi switching off), then setup Wi-Fi. A failed cable probe cannot hide an available STARLINK connection. Requested Wi-Fi waits for a DHCP gateway/default route within the request deadline. Home accepts a saved-name Wi-Fi only after its discovered gateway answers with a Starlink router identity; the saved name alone is not evidence. Read-only Home detection requires router silence, a readable dish, and an Ethernet CGNAT address before reporting Wi-Fi off.
+Probe order: each Ethernet candidate first (survives the Wi-Fi switching off), then setup Wi-Fi. A failed cable probe cannot hide an available STARLINK connection. Requested Wi-Fi waits for a DHCP gateway/default route within the request deadline. Home accepts a saved-name Wi-Fi only after its discovered gateway answers with a Starlink router identity; the saved name alone is not evidence. Read-only Home detection requires router silence, a readable dish, and an Ethernet CGNAT address before reporting Wi-Fi off. If either endpoint answers but setup cannot be determined, Home reports Unknown, refuses setup writes, and offers the existing reset guide. Discovery keeps Unknown as a fallback while checking other candidates; silence on another candidate cannot erase that answer. NotFound means neither endpoint answered (after any bounded restart wait). Configured, Bypass, and Unknown each explain that changing setup requires a factory reset and make reset help the primary action.
 
 ## Main flow
 
@@ -57,8 +57,9 @@ Home ─ detect state ─┬─ SetupPending ─▶ choose: [Wi-Fi off] or [Secu
                      │                     └─ confirm screen ─▶ send wifi_setup ─▶ verify ─▶ result
                      │                          result, Wi-Fi off: "connect the Mini to your router's WAN port"
                      │                          result, Wi-Fi on:  password in large type + Wi-Fi QR code
-                     ├─ Configured  ─▶ show SSIDs, auth, versions; explain: "To switch, factory reset the Mini"
-                     ├─ Bypass      ─▶ show dish status; explain the same
+                     ├─ Configured  ─▶ Wi-Fi status, names, password availability; reset guide
+                     ├─ Bypass      ─▶ Wi-Fi off, direct Starlink connection; reset guide
+                     ├─ Unknown     ─▶ settings unreadable; reset guide, no setup choices
                      ├─ Rebooting   ─▶ wait with progress (poll every 3 s, up to 3 min)
                      └─ NotFound    ─▶ guide: cable or join STARLINK Wi-Fi, check reset steps
 ```
@@ -98,7 +99,7 @@ API 30+ uses `ACTION_WIFI_ADD_NETWORKS` with a WPA2 suggestion; API 29 submits a
 network suggestion and explains Android's approval notification. Saved, already
 present, declined and unavailable results have separate messages. Saving a network
 allows Android to auto-connect; the app does not claim that saving proves a connection.
-Home offers **Show my Wi-Fi password** whenever the encrypted saved profile can be loaded, including after Done, Back, or a fresh launch. It opens the name/password/QR result and Join on this phone without claiming the Mini applied the saved profile. Details keeps the last successful fields and refreshes config/dish fields from verification reads.
+Configured Home shows Wi-Fi on/off, names, and password availability directly. It summarizes matching radio states and shows individual bands only when their states differ. Open networks say “No password”; secured networks explain that the Mini hides the password. **Show my Wi-Fi password** opens the existing saved-profile result only for a matching secured Wi-Fi name. Other Home states retain saved-profile recovery, including after Done, Back, or a fresh launch. It opens the name/password/QR result and Join on this phone without claiming the Mini applied the saved profile. Details keeps the last successful fields and refreshes config/dish fields from verification reads.
 Only the existing local endpoint allowlist is used. If verification is interrupted,
 reconnect guidance can reveal the encrypted saved credentials and QR without claiming
 the Mini applied them. An encryption/storage failure prevents the write entirely.

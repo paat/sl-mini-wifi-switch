@@ -44,7 +44,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import eu.tsernikov.slminiwifi.R
 import eu.tsernikov.slminiwifi.protocol.AuthKind
+import eu.tsernikov.slminiwifi.protocol.BasicServiceSet
 import eu.tsernikov.slminiwifi.protocol.DeviceInfo
+import eu.tsernikov.slminiwifi.protocol.WifiConfig
 import eu.tsernikov.slminiwifi.state.MiniDetails
 import eu.tsernikov.slminiwifi.state.MiniSnapshot
 import eu.tsernikov.slminiwifi.state.MiniState
@@ -66,12 +68,14 @@ fun HomeScreen(
     onGuide: (() -> Unit)? = null,
     onShowCredentials: (() -> Unit)? = null,
     onHelp: (() -> Unit)? = null,
+    savedWifiName: String? = null,
 ) {
     Screen {
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.labelLarge)
         val state = snapshot.state
         val title = when (state) {
             MiniState.SetupPending -> R.string.ready_title
+            MiniState.Unknown -> R.string.unknown_title
             MiniState.Configured -> R.string.configured_title
             MiniState.Bypass -> R.string.bypass_title
             MiniState.Rebooting -> R.string.rebooting_title
@@ -79,6 +83,7 @@ fun HomeScreen(
         }
         val body = when (state) {
             MiniState.SetupPending -> R.string.ready_body
+            MiniState.Unknown -> R.string.unknown_body
             MiniState.Configured -> R.string.configured_body
             MiniState.Bypass -> R.string.bypass_body
             MiniState.Rebooting -> R.string.rebooting_body
@@ -86,6 +91,7 @@ fun HomeScreen(
         }
         val icon = when (state) {
             MiniState.SetupPending -> R.drawable.ic_mini_ready to R.string.ready_icon_description
+            MiniState.Unknown -> R.drawable.ic_find to R.string.unknown_icon_description
             MiniState.Configured -> R.drawable.ic_mini_configured to R.string.configured_icon_description
             MiniState.Bypass -> R.drawable.ic_wifi_off to R.string.bypass_icon_description
             MiniState.Rebooting -> R.drawable.ic_waiting to R.string.rebooting_icon_description
@@ -98,8 +104,12 @@ fun HomeScreen(
         )
         Heading(stringResource(title))
         Text(stringResource(body))
-        onShowCredentials?.let { SecondaryButton(R.string.wifi_on_home_password, it) }
-        if (state != MiniState.SetupPending && state != MiniState.Rebooting) onGuide?.let { PrimaryButton(R.string.field_start_here, it) }
+        if (state == MiniState.Configured) {
+            WifiQuickStatus(snapshot.details.config, savedWifiName, onShowCredentials)
+        } else {
+            onShowCredentials?.let { SecondaryButton(R.string.wifi_on_home_password, it) }
+        }
+        if (state == MiniState.NotFound) onGuide?.let { PrimaryButton(R.string.field_start_here, it) }
         message?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
         onPermissions?.let { PrimaryButton(permissionsLabel, it) }
         if (isChecking || isConnecting || state == MiniState.Rebooting) {
@@ -123,8 +133,10 @@ fun HomeScreen(
                 SecondaryButton(R.string.details, onDetails)
                 SecondaryButton(R.string.check_again, onRefresh, !isChecking)
             }
-            MiniState.Configured, MiniState.Bypass -> {
-                PrimaryButton(R.string.details, onDetails)
+            MiniState.Configured, MiniState.Bypass, MiniState.Unknown -> {
+                Text(stringResource(R.string.home_reset_note))
+                onHelp?.let { PrimaryButton(R.string.home_reset_guide, it) }
+                SecondaryButton(R.string.details, onDetails)
                 SecondaryButton(R.string.check_again, onRefresh, !isChecking)
             }
             MiniState.Rebooting -> SecondaryButton(R.string.check_again, onRefresh, !isChecking)
@@ -143,13 +155,66 @@ fun HomeScreen(
                 }
             }
         }
-        onHelp?.let { SecondaryButton(R.string.field_reset_help, it) }
+        if (state != MiniState.Configured && state != MiniState.Bypass && state != MiniState.Unknown) {
+            onHelp?.let { SecondaryButton(R.string.field_reset_help, it) }
+        }
         Text(
             stringResource(R.string.read_only_note),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
+}
+
+/** Only auth kinds reach this UI: the protocol parser discards masked passwords. */
+@Composable
+private fun WifiQuickStatus(config: WifiConfig?, savedWifiName: String?, onShowCredentials: (() -> Unit)?) {
+    val services = config?.networks.orEmpty().flatMap { it.basicServiceSets }
+    GuideCard {
+        Subheading(stringResource(R.string.home_wifi_status))
+        val radioStates = services.groupBy { it.band }.mapValues { (_, bands) ->
+            bands.all { it.radioDisabled(config) }
+        }
+        val states = radioStates.values.distinct()
+        if (states.size <= 1) {
+            Value(R.string.field_wifi_list_title, states.singleOrNull()?.let {
+                stringResource(if (it) R.string.radio_off else R.string.radio_on)
+            })
+        } else {
+            for ((band, disabled) in radioStates) {
+                Value(when (band) {
+                    2 -> R.string.band_2ghz
+                    5 -> R.string.band_5ghz
+                    6 -> R.string.band_5ghz_high
+                    else -> R.string.field_wifi_list_title
+                }, stringResource(if (disabled) R.string.radio_off else R.string.radio_on))
+            }
+        }
+        if (services.isEmpty()) {
+            Value(R.string.wifi_on_name, null)
+            Value(R.string.wifi_on_password, null)
+        }
+        for ((name, bands) in services.groupBy { it.ssid }) {
+            Value(R.string.wifi_on_name, name)
+            val allOpen = bands.all { it.authKind == AuthKind.OPEN }
+            val allSecure = bands.all { it.authKind != null && it.authKind != AuthKind.OPEN }
+            val canShowSaved = allSecure && name.isNotBlank() && name == savedWifiName && onShowCredentials != null
+            Value(R.string.wifi_on_password, stringResource(when {
+                allOpen -> R.string.home_no_password
+                canShowSaved -> R.string.home_password_saved
+                bands.any { it.authKind == null } -> R.string.not_available
+                else -> R.string.home_password_hidden
+            }))
+            if (canShowSaved) SecondaryButton(R.string.wifi_on_home_password, onShowCredentials!!)
+        }
+    }
+}
+
+private fun BasicServiceSet.radioDisabled(config: WifiConfig?): Boolean = disable || when (band) {
+    2 -> config?.disable2Ghz == true
+    5 -> config?.disable5Ghz == true
+    6 -> config?.disable5GhzHigh == true
+    else -> false
 }
 
 @Composable
@@ -195,12 +260,7 @@ fun DetailsScreen(details: MiniDetails, onBack: () -> Unit) {
                     AuthKind.WPA2_WPA3 -> R.string.auth_wpa2_wpa3
                     null -> R.string.not_available
                 }))
-                val radioDisabled = band.disable || when (band.band) {
-                    2 -> details.config?.disable2Ghz == true
-                    5 -> details.config?.disable5Ghz == true
-                    6 -> details.config?.disable5GhzHigh == true
-                    else -> false
-                }
+                val radioDisabled = band.radioDisabled(details.config)
                 Value(R.string.radio_status, stringResource(if (radioDisabled) R.string.radio_off else R.string.radio_on))
             }
         }

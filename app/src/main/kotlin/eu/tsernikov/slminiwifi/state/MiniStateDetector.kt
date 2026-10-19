@@ -7,7 +7,7 @@ import eu.tsernikov.slminiwifi.protocol.Transport
 import eu.tsernikov.slminiwifi.protocol.WifiConfig
 import eu.tsernikov.slminiwifi.protocol.WifiGetStatusResponse
 
-enum class MiniState { SetupPending, Configured, Bypass, Rebooting, NotFound }
+enum class MiniState { SetupPending, Configured, Bypass, Unknown, Rebooting, NotFound }
 
 data class MiniDetails(
     val routerInfo: DeviceInfo? = null,
@@ -67,12 +67,19 @@ class MiniStateDetector(private val nowMillis: () -> Long = { System.nanoTime() 
         // Once the router has timed out, extra reads to the same endpoint only prolong waiting.
         val info = if (routerAnswered) (router.getDeviceInfo() as? ClientResult.Ok)?.response?.deviceInfo else null
         val status = if (routerAnswered) (router.getStatus() as? ClientResult.Ok)?.response?.wifiGetStatus else null
-        val dishInfo = (MiniClient(transport, "http://192.168.100.1:9201").getDeviceInfo()
+        var dishAnswered = false
+        val dishTransport = object : Transport {
+            override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray) =
+                transport.post(url, headers, body).also { dishAnswered = true }
+        }
+        val dishInfo = (MiniClient(dishTransport, "http://192.168.100.1:9201").getDeviceInfo()
             as? ClientResult.Ok)?.response?.deviceInfo
         val details = MiniDetails(info ?: status?.deviceInfo, dishInfo, config, status, routerAddress)
         val state = when {
             config != null -> if (config.setupComplete) MiniState.Configured else MiniState.SetupPending
             !routerAnswered && dishInfo != null && ipv4Addresses.any(::isStarlinkAddress) -> MiniState.Bypass
+            // An answer confirms the connection, but never authorizes setup without readable config.
+            routerAnswered || dishAnswered -> MiniState.Unknown
             else -> null
         }
         if (state != null) {
@@ -82,12 +89,6 @@ class MiniStateDetector(private val nowMillis: () -> Long = { System.nanoTime() 
             return MiniSnapshot(state, details)
         }
         if (!recordMiss) return MiniSnapshot(MiniState.NotFound, details)
-        if (routerAnswered) {
-            // We cannot determine setup state without config. Never offer setup based on a guess.
-            lastReachableAt = null
-            lostAt = null
-            return MiniSnapshot(MiniState.NotFound, details)
-        }
         return unreachable(startedAt, details)
     }
 
