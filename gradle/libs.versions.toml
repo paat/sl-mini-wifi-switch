@@ -14,8 +14,8 @@ compile-sdk = "37"
 min-sdk = "29"
 target-sdk = "37"
 jvm = "21"
-app-code = "1"
-app-name = "0.1.0"
+app-code = "2"
+app-name = "0.1.1"
 zxing = "3.5.3"
 
 [libraries]
