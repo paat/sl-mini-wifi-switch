@@ -146,6 +146,40 @@ class ConnectionLifecycleTest {
         }
     }
 
+    @Test fun deniedJoinOnHomeKeepsPermissionSentenceAfterGuide() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            ActivityScenario.launch(MainActivity::class.java).use { scenario ->
+                scenario.onActivity {
+                    installTransport(it.model)
+                    shadowOf(application).denyPermissions(Manifest.permission.NEARBY_WIFI_DEVICES)
+                }
+                val sentence = application.getString(R.string.permission_needed)
+                val settings = application.getString(R.string.open_phone_settings)
+                compose.onNodeWithText(application.getString(R.string.join_starlink))
+                    .performScrollTo().performClick()
+                runCurrent()
+                scenario.onActivity {
+                    it.model.permissionRequest = null
+                    it.model.permissionResult(mapOf(Manifest.permission.NEARBY_WIFI_DEVICES to false))
+                }
+                compose.onNodeWithText(sentence).performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText(settings).performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText(application.getString(R.string.field_start_here))
+                    .performScrollTo().performClick()
+                compose.onNodeWithText(application.getString(R.string.back)).performScrollTo().performClick()
+                runCurrent()
+                scenario.onActivity {
+                    assertEquals(Screen.Home, it.model.screen)
+                    assertTrue(it.model.permissionDenied)
+                    assertNull(it.model.message)
+                }
+                compose.onNodeWithText(sentence).performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText(settings).performScrollTo().assertIsDisplayed()
+            }
+        } finally { Dispatchers.resetMain() }
+    }
+
     @Test fun deniedReconnectShowsMessageAndSettingsOnEverySetupScreen() = deniedReconnect(permanent = false)
     @Test fun permanentlyDeniedReconnectShowsMessageAndSettingsOnEverySetupScreen() = deniedReconnect(permanent = true)
 

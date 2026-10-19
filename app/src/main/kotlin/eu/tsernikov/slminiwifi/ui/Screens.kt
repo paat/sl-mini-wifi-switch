@@ -51,14 +51,15 @@ import eu.tsernikov.slminiwifi.state.MiniDetails
 import eu.tsernikov.slminiwifi.state.MiniSnapshot
 import eu.tsernikov.slminiwifi.state.MiniState
 
-/** Connection failures and their recovery action stay on the current screen. */
+/** Connection failures stay on the current screen. Offering settings means access is still missing, so that sentence replaces a cleared message. */
 @Composable
 internal fun ConnectionFeedback(
     @StringRes message: Int?,
     onPermissions: (() -> Unit)?,
     @StringRes permissionsLabel: Int = R.string.open_phone_settings,
 ) {
-    message?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
+    val text = if (onPermissions != null) R.string.permission_needed else message
+    text?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
     onPermissions?.let { PrimaryButton(permissionsLabel, it) }
 }
 
