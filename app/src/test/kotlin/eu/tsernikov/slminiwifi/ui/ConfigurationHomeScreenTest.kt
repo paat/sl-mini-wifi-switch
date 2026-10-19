@@ -70,10 +70,22 @@ class ConfigurationHomeScreenTest {
 
     @Test fun notFoundHasNoManualCheckDuringInitialProbe() {
         compose.show(false) {
-            HomeScreen(MiniSnapshot(MiniState.NotFound), isChecking = true,
+            HomeScreen(MiniSnapshot(MiniState.NotFound), isChecking = true, isPolling = true,
                 onRefresh = {}, onConnect = {}, onDetails = {}, onSetupChoice = {}, animateGuides = false)
         }
         compose.onNodeWithText("Check again").assertDoesNotExist()
+    }
+
+    @Test fun retryVisibilityTracksPollingEvenWhenNoExplicitCheckIsShowing() {
+        val polling = androidx.compose.runtime.mutableStateOf(true)
+        compose.show(false) {
+            HomeScreen(MiniSnapshot(MiniState.NotFound), isChecking = false, isPolling = polling.value,
+                onRefresh = {}, onConnect = {}, onDetails = {}, onSetupChoice = {}, animateGuides = false)
+        }
+        compose.onNodeWithText("Checking your Mini…").assertDoesNotExist()
+        compose.onNodeWithText("Check again").assertDoesNotExist()
+        compose.runOnIdle { polling.value = false }
+        compose.onNodeWithText("Check again").performScrollTo().assertIsDisplayed()
     }
 
     @Test fun guideCopyQuotesTheNewReadinessTitle() {

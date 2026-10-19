@@ -1,5 +1,9 @@
 package eu.tsernikov.slminiwifi
 
+import android.os.Bundle
+import androidx.compose.ui.test.onNodeWithText
+import eu.tsernikov.slminiwifi.ui.HomeScreen
+import eu.tsernikov.slminiwifi.ui.show
 import android.net.ConnectivityManager
 import android.net.LinkAddress
 import android.net.LinkProperties
@@ -42,10 +46,13 @@ import org.robolectric.shadows.ShadowNetworkCapabilities
 import org.robolectric.shadows.ShadowNetworkInfo
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "en-rUS-w411dp-h891dp-xhdpi")
+@org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
 @OptIn(ExperimentalCoroutinesApi::class)
 @Suppress("DEPRECATION")
 class ConfigurationHomeTest {
+    @get:org.junit.Rule val compose = androidx.compose.ui.test.junit4.createComposeRule()
+
     private val application get() = RuntimeEnvironment.getApplication()
     private val store = ViewModelStore()
     private var state = MiniState.Configured
@@ -300,7 +307,7 @@ class ConfigurationHomeTest {
             model.start()
             runCurrent()
             assertEquals(MiniState.NotFound, model.snapshot.state)
-            assertFalse(model.polling!!.isActive)
+            assertFalse(model.polling?.isActive == true)
             val stoppedReads = reads
             state = MiniState.SetupPending
             advanceTimeBy(6_000)
@@ -430,7 +437,7 @@ class ConfigurationHomeTest {
         } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
     }
 
-    @Test fun immediateAutoAdvanceKeepsJobAndNextReadReportsChecking() = runTest {
+    @Test fun immediateAutoAdvanceKeepsJobAndNextReadStaysQuiet() = runTest {
         Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
         val model = newModel()
         try {
@@ -455,9 +462,127 @@ class ConfigurationHomeTest {
             } }
             advanceTimeBy(3_000)
             runCurrent()
-            assertTrue("Every in-flight poll reports checking", model.checking)
+            assertFalse("Background polls must not report explicit checking", model.checking)
             resume.complete(Unit)
             assertFalse(model.checking)
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun pendingHomeKeepsBothChoicesStillAcrossBackgroundReads() = quietHome(1f)
+    @Test fun pendingHomeKeepsBothChoicesStillAcrossBackgroundReadsAtLargeFont() = quietHome(2f)
+
+    private fun quietHome(fontScale: Float) = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            state = MiniState.SetupPending
+            var resume = CompletableDeferred<Unit>()
+            val transport = model.transportFactory
+            model.transportFactory = { connection, written -> object : Transport {
+                override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): HttpResponse {
+                    resume.await()
+                    return transport(connection, written).post(url, headers, body)
+                }
+            } }
+            model.start()
+            compose.show(false, fontScale) {
+                HomeScreen(model.snapshot, isChecking = model.checking,
+                    isPolling = model.polling?.isActive == true, onRefresh = {}, onConnect = {},
+                    onDetails = {}, onSetupChoice = {}, animateGuides = false)
+            }
+            compose.onNodeWithText("Checking your Mini…").assertExists()
+            compose.onNodeWithText("Check again").assertDoesNotExist()
+            resume.complete(Unit)
+            val labels = listOf("Wi-Fi off", "Wi-Fi on with password")
+            val bounds = labels.map { compose.onNodeWithText(it).fetchSemanticsNode().boundsInRoot }
+            val job = model.polling
+            repeat(3) {
+                resume = CompletableDeferred()
+                advanceTimeBy(3_000)
+                runCurrent()
+                assertSame(job, model.polling)
+                assertTrue(model.polling!!.isActive)
+                for (text in listOf("Checking your Mini…", "Waiting for the Mini to answer",
+                    application.getString(R.string.checking_help), "Check again")) {
+                    compose.onNodeWithText(text).assertDoesNotExist()
+                }
+                assertEquals(bounds, labels.map { compose.onNodeWithText(it).fetchSemanticsNode().boundsInRoot })
+                resume.complete(Unit)
+                assertEquals(bounds, labels.map { compose.onNodeWithText(it).fetchSemanticsNode().boundsInRoot })
+            }
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun savedOfflineHelpNeverPollsOrAutoAdvancesAfterProcessDeath() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            for (origin in listOf(Screen.WifiOn, Screen.WifiOnConfirm, Screen.WifiOff,
+                Screen.WifiOffResult, Screen.WifiOnResult, Screen.WifiOffError)) {
+                val original = newModel()
+                original.screen = origin
+                original.openHelp()
+                val saved = Bundle().also(original::saveState)
+                store.clear()
+                val restored = newModel()
+                restored.restore(saved)
+                assertEquals(Screen.ResetGuide, restored.screen)
+                assertFalse("Offline help from $origin", restored.resetHelpAutoDetect)
+                val beforeReads = reads
+                state = MiniState.SetupPending
+                restored.start()
+                advanceTimeBy(9_000)
+                runCurrent()
+                assertEquals("No reads after restoring $origin help", beforeReads, reads)
+                assertFalse(restored.polling?.isActive == true)
+                assertEquals(Screen.ResetGuide, restored.screen)
+                assertNull(restored.writing)
+                restored.stop()
+                store.clear()
+            }
+        } finally { store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun savedAutoDetectHelpStillFindsReadinessAfterProcessDeath() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            for (origin in listOf(Screen.Home, Screen.WifiOffError, Screen.WifiOnResult)) {
+                val original = newModel()
+                original.screen = origin
+                original.wifiOffError = eu.tsernikov.slminiwifi.state.WifiOffError.AlreadySetUp
+                original.wifiVerified = true
+                original.openHelp()
+                val saved = Bundle().also(original::saveState)
+                store.clear()
+                val restored = newModel()
+                restored.restore(saved)
+                assertTrue("Auto-detect help from $origin", restored.resetHelpAutoDetect)
+                state = MiniState.SetupPending
+                restored.start()
+                runCurrent()
+                assertEquals(Screen.Home, restored.screen)
+                assertEquals(MiniState.SetupPending, restored.snapshot.state)
+                assertNull(restored.writing)
+                restored.stop()
+                store.clear()
+            }
+        } finally { store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun legacyHelpWithoutSavedEligibilityStaysOffline() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            model.restore(Bundle().apply {
+                putString("screen", Screen.ResetGuide.name)
+                putString("helpReturn", "UnknownOldScreen")
+            })
+            state = MiniState.SetupPending
+            model.start()
+            advanceTimeBy(9_000)
+            runCurrent()
+            assertFalse(model.resetHelpAutoDetect)
+            assertEquals(0, reads)
+            assertEquals(Screen.ResetGuide, model.screen)
         } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
     }
 
@@ -481,7 +606,7 @@ class ConfigurationHomeTest {
             runCurrent()
             assertEquals(Screen.WifiOnConfirm, model.screen)
             assertEquals(0, reads)
-            assertFalse(model.polling!!.isActive)
+            assertFalse(model.polling?.isActive == true)
             assertNull(model.writing)
         } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
     }

@@ -69,6 +69,7 @@ internal fun ConnectionFeedback(
 fun HomeScreen(
     snapshot: MiniSnapshot,
     isChecking: Boolean = false,
+    isPolling: Boolean = false,
     isConnecting: Boolean = false,
     @StringRes message: Int? = null,
     onRefresh: () -> Unit,
@@ -127,14 +128,16 @@ fun HomeScreen(
         if (isChecking || isConnecting || state == MiniState.Rebooting) {
             if (state == MiniState.Rebooting) RestartIllustration(animateGuides)
             WaitingProgress(animateGuides)
-            Text(stringResource(when {
-                isConnecting -> R.string.connection_waiting
-                state == MiniState.Rebooting -> R.string.rebooting_help
-                else -> R.string.checking
-            }))
-            if (isConnecting) Text(stringResource(R.string.field_connect_longer))
-            if (isChecking && !isConnecting && state != MiniState.Rebooting) {
-                Text(stringResource(R.string.checking_help))
+            when {
+                isConnecting -> {
+                    Text(stringResource(R.string.connection_waiting))
+                    Text(stringResource(R.string.field_connect_longer))
+                }
+                state == MiniState.Rebooting -> Text(stringResource(R.string.rebooting_help))
+                else -> {
+                    Text(stringResource(R.string.checking))
+                    Text(stringResource(R.string.checking_help))
+                }
             }
         }
         when (state) {
@@ -157,7 +160,7 @@ fun HomeScreen(
                     Subheading(stringResource(R.string.cable_title))
                     CableIllustration(animateGuides)
                     Text(stringResource(R.string.cable_body))
-                    if (!isChecking && !isConnecting) PrimaryButton(R.string.check_again, onRefresh)
+                    if (!isPolling && !isConnecting) PrimaryButton(R.string.check_again, onRefresh)
                 }
                 GuideCard {
                     Subheading(stringResource(R.string.wifi_title))

@@ -127,7 +127,13 @@ controls its top-of-guide waiting/progress text. All other help origins stay off
 so Back preserves editing/confirmation evidence and result credentials.
 The screen setter and start() share polling eligibility; an already running poll
 survives navigation between eligible screens, including automatic return to Home.
-Every read sets checking until it completes; the interval between reads does not.
+Only the first read when polling starts sets checking; later background reads leave
+Home's progress block and setup-choice layout unchanged. Check again uses the active
+poll job, independently of checking. Poll completion clears the observable job only
+if it still owns that job, so an older cancellation cannot clear a replacement.
+Reset help saves its auto-detect eligibility in the Activity's existing saved-state
+Bundle. Restoring an offline or unknown origin stays offline even when its safe Back
+destination is Home; missing eligibility from older saved state defaults to offline.
 stop() cancels polling. All Start here pages, editing, confirmations and writes
 cancel Home polling.
 A transition from a non-SetupPending observation into SetupPending automatically

@@ -84,7 +84,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     var secureFlow by mutableStateOf(false)
     val detector = MiniStateDetector()
     val scope = viewModelScope
-    var polling: Job? = null
+    var polling by mutableStateOf<Job?>(null)
     var connecting: Job? = null
     var writing: Job? = null
     var detectedConnection: StarlinkConnection? = null
@@ -161,6 +161,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             GuideStep.AndroidConnect
         } else GuideStep.Cable
         restoreHelpReturn(savedInstanceState?.getString("helpReturn"))
+        resetHelpAutoDetect = savedInstanceState?.getBoolean("resetHelpAutoDetect") ?: false
     }
 
     fun permissionResult(result: Map<String, Boolean>) {
@@ -189,6 +190,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         outState.putString("guideStep", guideStep.name)
         outState.putString("guideCheckBack", guideCheckBack.name)
         outState.putString("helpReturn", helpReturn.name)
+        outState.putBoolean("resetHelpAutoDetect", resetHelpAutoDetect)
         outState.putBoolean("secureFlow", secureFlow)
         outState.putBoolean("profileSaved", profileSaved)
         outState.putBoolean("wifiVerified", wifiVerified)
@@ -260,6 +262,9 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
 
     fun openHelp() {
         helpReturn = screen
+        resetHelpAutoDetect = helpReturn == Screen.Home ||
+            (helpReturn == Screen.WifiOffError && wifiOffError == WifiOffError.AlreadySetUp) ||
+            (helpReturn == Screen.WifiOnResult && wifiVerified)
         screen = Screen.ResetGuide
         connecting?.cancel()
     }
@@ -678,10 +683,8 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         }
     }
 
-    val resetHelpAutoDetect: Boolean
-        get() = helpReturn == Screen.Home ||
-            (helpReturn == Screen.WifiOffError && wifiOffError == WifiOffError.AlreadySetUp) ||
-            (helpReturn == Screen.WifiOnResult && wifiVerified)
+    var resetHelpAutoDetect by mutableStateOf(false)
+        private set
 
     fun startPolling() {
         if (!foreground || requestingWifi || !hasLocalAccess() ||
@@ -692,8 +695,8 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         if (polling?.isActive == true) return
         val job = scope.launch(start = CoroutineStart.LAZY) {
             try {
+                checking = true
                 while (isActive) {
-                    checking = true
                     val remaining = detector.rebootTimeRemainingMillis
                     val detected = if (remaining == null) detectAvailable() else {
                         withTimeoutOrNull(remaining) { detectAvailable() }
@@ -723,6 +726,9 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             }
         }
         polling = job
+        job.invokeOnCompletion {
+            if (polling === job) polling = null
+        }
         job.start()
     }
 }

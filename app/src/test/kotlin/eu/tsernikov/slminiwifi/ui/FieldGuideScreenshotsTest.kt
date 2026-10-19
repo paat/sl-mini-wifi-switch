@@ -141,7 +141,6 @@ class FieldGuideScreenshotsTest {
         if (state == MiniState.SetupPending) {
             compose.onNodeWithText("Reset help").assertDoesNotExist()
             compose.onNodeWithText("Details").performScrollTo().assertIsDisplayed()
-            capture("${name}_details")
         } else {
             compose.onNodeWithText("Reset help").performScrollTo().assertIsDisplayed().performClick()
             capture("${name}_help")

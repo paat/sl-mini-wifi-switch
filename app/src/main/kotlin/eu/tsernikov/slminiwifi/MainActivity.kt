@@ -90,6 +90,7 @@ class MainActivity : ComponentActivity() {
                             onShowCredentials = if (canShowHomeCredentials) ::showSavedPassword else null,
                             savedWifiName = savedProfile?.name,
                             isChecking = checking,
+                            isPolling = polling?.isActive == true,
                             isConnecting = requestingWifi,
                             message = message,
                             onRefresh = { requestAccess(PermissionAction.Check) },

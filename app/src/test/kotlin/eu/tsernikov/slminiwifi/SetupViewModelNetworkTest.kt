@@ -325,7 +325,7 @@ class SetupViewModelNetworkTest {
             request.onUnavailable()
             testScheduler.runCurrent()
             assertEquals(R.string.connection_failed, model.message)
-            assertFalse(model.polling!!.isActive)
+            assertFalse(model.polling?.isActive == true)
             addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
             model.transportFactory = { _, _ -> ReadOnlyTransport() }
             model.requestAccess(SetupViewModel.PermissionAction.Check)
