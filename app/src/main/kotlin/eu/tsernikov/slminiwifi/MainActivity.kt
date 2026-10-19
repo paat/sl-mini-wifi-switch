@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         model = ViewModelProvider(this)[SetupViewModel::class.java]
         model.restore(savedInstanceState)
-        handleSetupLaunch(intent)
+        if (savedInstanceState?.getBoolean("setupLaunchHandled") != true) handleSetupLaunch(intent)
         autoConnect = AndroidWifiAutoConnect(this, model::releaseConnection) { saveNetwork.launch(it) }
         enableEdgeToEdge()
         setContent {
@@ -64,8 +64,11 @@ class MainActivity : ComponentActivity() {
             }
             with(model) {
                 val reconnectSetup: (() -> Unit)? = if (!canConfirm && !checking && !requestingWifi) {
-                    { requestAccess(PermissionAction.Connect) }
+                    { requestAccess(PermissionAction.Reconnect) }
                 } else null
+                val openSettings: (() -> Unit)? = if (permissionDenied) ({
+                    startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
+                }) else null
                 MiniTheme {
                     BackHandler(enabled = screen != Screen.Home) {
                         if (screen != Screen.WifiOffProgress && screen != Screen.WifiOnProgress) {
@@ -97,9 +100,7 @@ class MainActivity : ComponentActivity() {
                                     if (wifiOff) openWifiOff() else openWifiOn()
                                 }
                             },
-                            onPermissions = if (permissionDenied) ({
-                                startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")))
-                            }) else null,
+                            onPermissions = openSettings,
                         )
                         Screen.Details -> DetailsScreen(lastDetails) {
                             if (detailsReturn != Screen.Home) screen = detailsReturn else returnHome()
@@ -114,8 +115,13 @@ class MainActivity : ComponentActivity() {
                             onContinue = { if (WifiRules.isValid(profile)) screen = Screen.WifiOnConfirm },
                             onBack = ::returnHome, message = profileError, onHelp = ::openHelp,
                             onReconnect = reconnectSetup, canConfirm = canConfirm,
+                            connectionMessage = message, onPermissions = openSettings,
                         )
-                        Screen.WifiOnConfirm -> WifiOnConfirmScreen(profile.name, ::confirmWifiOn, onCancel = { screen = Screen.WifiOn }, canConfirm = canConfirm, onReconnect = reconnectSetup)
+                        Screen.WifiOnConfirm -> WifiOnConfirmScreen(
+                            profile.name, ::confirmWifiOn, onCancel = { screen = Screen.WifiOn },
+                            canConfirm = canConfirm, onReconnect = reconnectSetup,
+                            connectionMessage = message, onPermissions = openSettings,
+                        )
                         Screen.WifiOnProgress -> WifiOnProgressScreen(onReconnect = if (reconnectAvailable) ::reconnectForVerification else null)
                         Screen.WifiOnResult -> WifiOnResultScreen(profile,
                             onConnect = { screen = Screen.WifiOnConnect },
@@ -126,7 +132,11 @@ class MainActivity : ComponentActivity() {
                                 screen = Screen.WifiOnResult
                                 joinMessage = autoConnect.connect(profile.name, profile.password)?.let(::joinMessage)
                             }, onBack = { screen = Screen.WifiOnResult })
-                        Screen.WifiOff -> WifiOffConfirmScreen(confirmationIsWifi, ::confirmWifiOff, ::returnHome, canConfirm = canConfirm, onReconnect = reconnectSetup)
+                        Screen.WifiOff -> WifiOffConfirmScreen(
+                            confirmationIsWifi, ::confirmWifiOff, ::returnHome,
+                            canConfirm = canConfirm, onReconnect = reconnectSetup,
+                            connectionMessage = message, onPermissions = openSettings,
+                        )
                         Screen.WifiOffProgress -> WifiOffProgressScreen()
                         Screen.WifiOffResult -> WifiOffResultScreen(likelySuccess,
                             onDetails = if (hasDetails) ({ detailsReturn = Screen.WifiOffResult; screen = Screen.Details }) else null,
@@ -167,7 +177,6 @@ class MainActivity : ComponentActivity() {
 
     private fun handleSetupLaunch(intent: Intent) {
         if (intent.action == SetupLaunch.ACTION) {
-            intent.action = null
             model.openFromQuickLaunch()
         }
     }
@@ -184,6 +193,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         model.saveState(outState)
+        outState.putBoolean("setupLaunchHandled", true)
         super.onSaveInstanceState(outState)
     }
 }

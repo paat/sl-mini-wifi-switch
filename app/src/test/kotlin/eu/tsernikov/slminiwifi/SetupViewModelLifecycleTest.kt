@@ -67,7 +67,7 @@ class SetupViewModelLifecycleTest {
                     SetupLaunch.intent(application)).create().start().resume()
                 try {
                     val model = controller.get().model
-                    assertNull(controller.get().intent.action)
+                    assertEquals(SetupLaunch.ACTION, controller.get().intent.action)
                     model.screen = screen
                     model.guideStep = eu.tsernikov.slminiwifi.ui.GuideStep.AndroidConnect
                     controller.recreate()
@@ -77,7 +77,7 @@ class SetupViewModelLifecycleTest {
                     // A fresh quick-launch intent still opens Home, and is consumed too.
                     controller.newIntent(SetupLaunch.intent(controller.get()))
                     assertEquals(Screen.Home, model.screen)
-                    assertNull(controller.get().intent.action)
+                    assertEquals(SetupLaunch.ACTION, controller.get().intent.action)
                     model.screen = screen
                     controller.recreate()
                     assertEquals(screen, model.screen)
@@ -280,7 +280,7 @@ class SetupViewModelLifecycleTest {
             model.snapshot = MiniSnapshot(MiniState.SetupPending)
             model.confirmedConnection = connection
             model.stop()
-            assertFalse(model.canConfirm)
+            assertSame(connection, model.confirmedConnection)
             model.start()
             assertFalse(model.canConfirm)
             model.confirmWifiOff()

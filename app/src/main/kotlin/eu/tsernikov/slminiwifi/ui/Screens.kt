@@ -51,6 +51,17 @@ import eu.tsernikov.slminiwifi.state.MiniDetails
 import eu.tsernikov.slminiwifi.state.MiniSnapshot
 import eu.tsernikov.slminiwifi.state.MiniState
 
+/** Connection failures and their recovery action stay on the current screen. */
+@Composable
+internal fun ConnectionFeedback(
+    @StringRes message: Int?,
+    onPermissions: (() -> Unit)?,
+    @StringRes permissionsLabel: Int = R.string.open_phone_settings,
+) {
+    message?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
+    onPermissions?.let { PrimaryButton(permissionsLabel, it) }
+}
+
 /** All actions are delegated; these screens cannot issue protocol requests. */
 @Composable
 fun HomeScreen(
@@ -110,8 +121,7 @@ fun HomeScreen(
             onShowCredentials?.let { SecondaryButton(R.string.wifi_on_home_password, it) }
         }
         if (state == MiniState.NotFound) onGuide?.let { PrimaryButton(R.string.field_start_here, it) }
-        message?.let { Text(stringResource(it), style = MaterialTheme.typography.bodyLarge) }
-        onPermissions?.let { PrimaryButton(permissionsLabel, it) }
+        ConnectionFeedback(message, onPermissions, permissionsLabel)
         if (isChecking || isConnecting || state == MiniState.Rebooting) {
             if (state == MiniState.Rebooting) RestartIllustration(animateGuides)
             WaitingProgress(animateGuides)

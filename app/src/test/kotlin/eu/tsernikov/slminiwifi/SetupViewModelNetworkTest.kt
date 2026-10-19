@@ -93,7 +93,7 @@ class SetupViewModelNetworkTest {
                 assertFalse(model.canConfirm)
                 assertTrue(connectivity.networkCallbacks.isEmpty())
 
-                model.requestAccess(SetupViewModel.PermissionAction.Connect)
+                model.requestAccess(SetupViewModel.PermissionAction.Reconnect)
                 testScheduler.runCurrent()
                 val declined = connectivity.networkCallbacks.single()
                 // onStart during Android's dialog must not cancel or repeat the requested connection.
@@ -110,7 +110,7 @@ class SetupViewModelNetworkTest {
                 assertFalse(model.requestingWifi)
                 assertTrue(connectivity.networkCallbacks.isEmpty())
 
-                model.requestAccess(SetupViewModel.PermissionAction.Connect)
+                model.requestAccess(SetupViewModel.PermissionAction.Reconnect)
                 testScheduler.runCurrent()
                 val accepted = connectivity.networkCallbacks.single()
                 val replacement = addNetwork(2, NetworkCapabilities.TRANSPORT_WIFI, "STARLINK")
@@ -127,6 +127,8 @@ class SetupViewModelNetworkTest {
                 assertEquals(replacement, model.confirmedConnection?.network)
                 org.junit.Assert.assertNull(model.writing)
                 model.stop()
+                // Each loop is a separate connection session; stopping no longer releases it.
+                model.releaseConnection()
             }
         } finally { kotlinx.coroutines.Dispatchers.resetMain() }
     }

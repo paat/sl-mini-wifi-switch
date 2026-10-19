@@ -78,6 +78,13 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Unknown detection and conservative setup refusal, regression tests, light/dark/200% status screenshots in `docs/screenshots/m5-status/`
 - [ ] Human read-only Home and TalkBack checks (TESTING.md #22)
 
+## Connection lifecycle (#19)
+
+- [x] Keep app-requested STARLINK connections in the ViewModel across Activity recreation; release on task finish or explicit flow release
+- [x] Show connection failures and Open phone settings on editing and both confirmation screens
+- [x] Consume quick entry once across real ActivityScenario recreation, including a preserved system launch intent
+- [x] Re-read Ethernet before requesting Wi-Fi from Reconnect; regression tests for all four cases
+
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found

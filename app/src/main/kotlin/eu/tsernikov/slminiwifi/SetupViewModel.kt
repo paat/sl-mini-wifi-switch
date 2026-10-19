@@ -45,13 +45,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.withContext
 
-/** Retains confirmed operations and their read-only verification across configuration changes. */
+/** Owns the connection and flow for the lifetime of the app task, including Activity recreation. */
 internal class SetupViewModel(application: Application) : AndroidViewModel(application) {
     enum class Screen {
         Home, Details, WifiOff, WifiOffProgress, WifiOffResult, WifiOffError, ResetGuide, FieldGuide,
         WifiOn, WifiOnConfirm, WifiOnProgress, WifiOnResult, WifiOnConnect,
     }
-    enum class PermissionAction { Check, Connect, SecureWifi }
+    enum class PermissionAction { Check, Connect, Reconnect, SecureWifi }
 
     val networks = StarlinkNetworks(application)
     internal var transportFactory: (StarlinkConnection, () -> Unit) -> eu.tsernikov.slminiwifi.protocol.Transport = { connection, onWritten ->
@@ -158,17 +158,21 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         if (result.values.all { it }) {
             permissionDenied = false
             message = null
-            when (pendingPermissionAction) {
-                PermissionAction.Check -> startPolling(showProgress = true)
-                PermissionAction.Connect -> connectWifi()
-                PermissionAction.SecureWifi -> confirmWifiOn()
-            }
+            performPermissionAction()
         } else {
             permissionDenied = true
             message = R.string.permission_needed
-            if (pendingPermissionAction == PermissionAction.SecureWifi) screen = Screen.Home
             // Ethernet is still usable if only the Wi-Fi identification permission was refused.
             startPolling(showProgress = false)
+        }
+    }
+
+    private fun performPermissionAction() {
+        when (pendingPermissionAction) {
+            PermissionAction.Check -> startPolling(showProgress = true)
+            PermissionAction.Connect -> connectWifi()
+            PermissionAction.Reconnect -> reacquireConfirmation(requestWifiIfMissing = true)
+            PermissionAction.SecureWifi -> confirmWifiOn()
         }
     }
 
@@ -188,7 +192,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     fun start() {
         foreground = true
         if (hasLocalAccess()) {
-            if (permissionDenied && wifiPermissions(pendingPermissionAction).all(::granted)) {
+            if (permissionDenied && missingPermissions(pendingPermissionAction).isEmpty()) {
                 permissionDenied = false
                 message = null
             }
@@ -201,12 +205,8 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     fun stop() {
         foreground = false
         polling?.cancel()
-        if (screen == Screen.WifiOffProgress || screen == Screen.WifiOnProgress) return
-        connecting?.cancel()
-        networks.releaseRequest()
-        if (screen == Screen.WifiOff || screen == Screen.WifiOn || screen == Screen.WifiOnConfirm) {
-            confirmedConnection = null
-        }
+        // Activity visibility only controls Home polling. Requests and operations belong to
+        // this model and are released by explicit flow actions or onCleared, never rotation.
     }
 
     fun releaseConnection() {
@@ -493,20 +493,23 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             listOf(Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION)
         }
 
+    private fun missingPermissions(action: PermissionAction): List<String> = buildList {
+        if (!hasLocalAccess()) add(Manifest.permission.ACCESS_LOCAL_NETWORK)
+        // Reconnect reads Ethernet first. Ask for Wi-Fi permission only on the Connect fallback.
+        if (action != PermissionAction.Reconnect &&
+            (action == PermissionAction.Connect || networks.findAvailable() == null)) addAll(wifiPermissions(action))
+    }.distinct().filterNot(::granted)
+
     fun requestAccess(action: PermissionAction) {
         if (requestingWifi) return
         pendingPermissionAction = action
-        val needed = buildList {
-            if (!hasLocalAccess()) add(Manifest.permission.ACCESS_LOCAL_NETWORK)
-            // A cable needs no Wi-Fi/location permission.
-            if (action == PermissionAction.Connect || networks.findAvailable() == null) addAll(wifiPermissions(action))
-        }.distinct().filterNot(::granted)
+        val needed = missingPermissions(action)
         if (needed.isNotEmpty()) {
             awaitingPermissionResult = true
             permissionRequest = needed
         } else {
             message = null
-            if (action == PermissionAction.Connect) connectWifi() else startPolling(showProgress = true)
+            performPermissionAction()
         }
     }
 
@@ -590,7 +593,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         return unknown ?: (null to result)
     }
 
-    fun reacquireConfirmation() {
+    fun reacquireConfirmation(requestWifiIfMissing: Boolean = false) {
         connecting?.cancel()
         confirmedConnection = null
         checking = true
@@ -603,6 +606,8 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                     confirmedConnection = connection
                     confirmedInterface = networks.interfaceName(connection)
                     confirmationIsWifi = !networks.isEthernet(connection)
+                } else if (connection == null && requestWifiIfMissing) {
+                    requestAccess(PermissionAction.Connect)
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled

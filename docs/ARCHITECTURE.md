@@ -76,7 +76,7 @@ address, a readable dish at `192.168.100.1`, and a `100.64.0.0/10` address. When
 interface. Any router HTTP response (even malformed or refused) prevents success.
 Loss of setup Wi-Fi is labelled likely success only after an acknowledged write or after the request body was transmitted; a replacement STARLINK handle prevents that inference. A device refusal takes precedence over a dropped connection.
 
-A retained ViewModel owns flow state, the app-local network request, and bounded verification. Rotation and backgrounding preserve an in-flight operation; neither creates another send. Returning to editing or confirmation keeps the form and re-probes existing networks before enabling Confirm. A missing connection offers Reconnect to the Mini; only that tap requests Android’s Connect dialog. Declining it keeps the typed name and password. Intentional network release clears recent reachability only outside an active restart wait. Probe timeout and backgrounding preserve the original restart deadline. Process death never restores a write: interrupted progress opens reconnect guidance, and an unsent confirmation never claims a write failed.
+A retained ViewModel owns flow state, the app-local network request, and bounded verification. Activity stop pauses Home polling only; the request stays owned by the ViewModel across rotation and temporary backgrounding. Finishing the app task clears the ViewModel and closes the request; explicit flow release also closes it. Rotation and backgrounding preserve an in-flight operation; neither creates another send. Returning to editing or confirmation keeps the form and re-probes existing networks before enabling Confirm. A missing connection offers Reconnect to the Mini; that tap first re-reads available networks in Ethernet-first order and requests Android’s Connect dialog only if none reaches the Mini. Declining it keeps the typed name and password. Connection failures and the Open phone settings action appear on the current editing or confirmation screen, as on Home. Intentional network release clears recent reachability only outside an active restart wait. Probe timeout and backgrounding preserve the original restart deadline. Process death never restores a write: interrupted progress opens reconnect guidance, and an unsent confirmation never claims a write failed.
 
 The secure-Wi-Fi flow also pins the connection that reported setup pending. It saves
 one profile encrypted with an Android Keystore AES-256-GCM key before sending a
@@ -113,7 +113,7 @@ The shortcut uses a separate, no-history launcher activity: Android clears the
 static shortcut target task, so this activity forwards an explicit intent into the
 existing app task. Warm and cold quick entry return only idle screens to Home. Editing, confirmation,
 pending permission dialogs, progress, saved-password results and phone-save guidance
-keep their current context. Quick entry never interrupts verification or sends another change.
+keep their current context. Quick entry never interrupts verification or sends another change. A saved-instance flag records that the initial launch action has been handled; recreation restores the existing flow without redelivering the launch intent. A new intent still runs once through onNewIntent. The Activity does not mutate the system launch intent.
 
 Home's **Start here** guide explains the physical reset, blinking-then-off light,
 wait, and either cable connection or STARLINK plus Android's Connect dialog. Its
