@@ -108,6 +108,22 @@ class HomeStatusTest {
         compose.onNodeWithText("Off").performScrollTo().assertIsDisplayed()
     }
 
+    @Test fun configuredMixedSecuredBandsKeepsSavedPasswordButton() {
+        var opens = 0
+        show(configuredBands(listOf(
+            BasicServiceSet(ssid = "Mini-Camp", band = 2, authKind = AuthKind.WPA2),
+            BasicServiceSet(ssid = "Mini-Camp", band = 5, authKind = AuthKind.WPA2_WPA3),
+        )), onShowCredentials = { opens++ })
+        compose.onNodeWithText("This phone has a saved password for this Wi-Fi name.")
+            .performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Not available").assertDoesNotExist()
+        compose.onNodeWithText("No password").assertDoesNotExist()
+        compose.onNodeWithText(HIDDEN_PASSWORD).assertDoesNotExist()
+        assertEquals(0, opens)
+        compose.onNodeWithText("Show my Wi-Fi password").performScrollTo().performClick()
+        assertEquals(1, opens)
+    }
+
     @Test fun configuredMixedOpenAndSecuredBandsSaysPasswordUnavailable() {
         show(configuredBands(listOf(
             BasicServiceSet(ssid = "Mini-Camp", band = 2, authKind = AuthKind.OPEN),
@@ -254,6 +270,6 @@ class HomeStatusTest {
 
     companion object {
         private const val HIDDEN_PASSWORD = "The Mini keeps the password hidden. Check where you wrote it down, or reset the Mini to choose a new one."
-        private const val RESET_NOTE = "To change this setup, find the reset symbol on the back of the Mini. Press until it clicks. Hold for about 3 seconds."
+        private const val RESET_NOTE = "To change this setup, the Mini needs a reset first. The guide below shows how, step by step."
     }
 }

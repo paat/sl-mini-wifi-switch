@@ -193,6 +193,6 @@
     <string name="home_password_hidden">The Mini keeps the password hidden. Check where you wrote it down, or reset the Mini to choose a new one.</string>
     <string name="home_password_saved">This phone has a saved password for this Wi-Fi name.</string>
     <string name="home_no_password">No password</string>
-    <string name="home_reset_note">To change this setup, find the reset symbol on the back of the Mini. Press until it clicks. Hold for about 3 seconds.</string>
+    <string name="home_reset_note">To change this setup, the Mini needs a reset first. The guide below shows how, step by step.</string>
     <string name="home_reset_guide">How to reset the Mini</string>
 </resources>

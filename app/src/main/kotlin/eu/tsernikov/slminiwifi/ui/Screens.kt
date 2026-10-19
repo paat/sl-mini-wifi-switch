@@ -197,20 +197,30 @@ private fun WifiQuickStatus(config: WifiConfig?, savedWifiName: String?, onShowC
         }
         for ((name, bands) in services.groupBy { it.ssid }) {
             Value(R.string.wifi_on_name, name)
-            // One name can be open on one band and secured on another. Do not call that hidden.
-            val auth = bands.map { it.authKind }.distinct().singleOrNull()
+            // Same rule as SetupViewModel.canShowHomeCredentials: every band secured, none unknown.
+            // WPA2 with WPA2/WPA3 is still secured. Open mixed with secured is not.
+            val line = homePasswordLine(bands.map { it.authKind })
             val showSaved = onShowCredentials?.takeIf {
-                auth != null && auth != AuthKind.OPEN && name.isNotBlank() && name == savedWifiName
+                line == HomePasswordLine.Secured && name.isNotBlank() && name == savedWifiName
             }
-            Value(R.string.wifi_on_password, stringResource(when {
-                auth == AuthKind.OPEN -> R.string.home_no_password
-                showSaved != null -> R.string.home_password_saved
-                auth == null -> R.string.not_available
-                else -> R.string.home_password_hidden
+            Value(R.string.wifi_on_password, stringResource(when (line) {
+                HomePasswordLine.Open -> R.string.home_no_password
+                HomePasswordLine.Secured -> if (showSaved != null) R.string.home_password_saved else R.string.home_password_hidden
+                HomePasswordLine.Unavailable -> R.string.not_available
             }))
             if (showSaved != null) SecondaryButton(R.string.wifi_on_home_password, showSaved)
         }
     }
+}
+
+/** Per Wi-Fi name. Matches [eu.tsernikov.slminiwifi.SetupViewModel.canShowHomeCredentials] for the saved name. */
+private enum class HomePasswordLine { Open, Secured, Unavailable }
+
+private fun homePasswordLine(auths: List<AuthKind?>): HomePasswordLine = when {
+    auths.any { it == null } -> HomePasswordLine.Unavailable
+    auths.isNotEmpty() && auths.all { it == AuthKind.OPEN } -> HomePasswordLine.Open
+    auths.isNotEmpty() && auths.all { it != null && it != AuthKind.OPEN } -> HomePasswordLine.Secured
+    else -> HomePasswordLine.Unavailable
 }
 
 private fun BasicServiceSet.radioDisabled(config: WifiConfig?): Boolean = disable || when (band) {
