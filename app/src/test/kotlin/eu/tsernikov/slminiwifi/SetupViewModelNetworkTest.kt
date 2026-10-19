@@ -169,6 +169,47 @@ class SetupViewModelNetworkTest {
         assertEquals("Router-test", snapshot.details.routerInfo?.id)
     }
 
+    @Test fun unreadableRouterRemainsUnknownWhenLaterNetworkIsSilent() = runTest {
+        val ethernet = addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
+        val wifi = addNetwork(2, NetworkCapabilities.TRANSPORT_WIFI, "STARLINK")
+        model.transportFactory = { connection, _ ->
+            opened += connection
+            ReadOnlyTransport(unreachable = connection.network == wifi, configUnreadable = true)
+        }
+
+        val (_, snapshot) = model.detectAvailable()
+
+        assertEquals(listOf(ethernet, wifi), opened.map { it.network })
+        assertEquals(MiniState.Unknown, snapshot.state)
+        assertEquals("Router-test", snapshot.details.routerInfo?.id)
+        org.junit.Assert.assertNull("An answered candidate must not start a restart wait", model.detector.rebootTimeRemainingMillis)
+    }
+
+    @Test fun readableSetupOnLaterNetworkWinsOverEarlierUnknown() = runTest {
+        val ethernet = addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
+        val wifi = addNetwork(2, NetworkCapabilities.TRANSPORT_WIFI, "STARLINK")
+        model.transportFactory = { connection, _ ->
+            opened += connection
+            ReadOnlyTransport(configUnreadable = connection.network == ethernet)
+        }
+
+        val (selected, snapshot) = model.detectAvailable()
+
+        assertEquals(listOf(ethernet, wifi), opened.map { it.network })
+        assertEquals(wifi, selected?.network)
+        assertEquals(MiniState.SetupPending, snapshot.state)
+    }
+
+    @Test fun soleUnreadableRouterKeepsUnknownInsteadOfConnectionGuidance() = runTest {
+        addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
+        model.transportFactory = { _, _ -> ReadOnlyTransport(configUnreadable = true) }
+
+        val (_, snapshot) = model.detectAvailable()
+
+        assertEquals(MiniState.Unknown, snapshot.state)
+        assertEquals("Router-test", snapshot.details.routerInfo?.id)
+    }
+
     @Test fun replacementStarlinkHandlePreventsWifiLossEvidence() = runTest {
         val original = StarlinkConnection(addNetwork(1, NetworkCapabilities.TRANSPORT_WIFI, "STARLINK"), "192.168.1.1")
         model.confirmationIsWifi = true
@@ -234,12 +275,16 @@ class SetupViewModelNetworkTest {
         private val unreachable: Boolean = false,
         private val routerSilent: Boolean = false,
         private val secured: Boolean = false,
+        private val configUnreadable: Boolean = false,
     ) : Transport {
         override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): HttpResponse {
             // The test must reject a setup request, even if the production path regresses.
             check(listOf(Requests.wifiGetConfig(), Requests.getDeviceInfo(), Requests.getStatus())
                 .any { it.contentEquals(body) }) { "Unexpected write in read-only operation" }
             if (unreachable) throw IOException("Unrelated Ethernet network")
+            if (configUnreadable && body.contentEquals(Requests.wifiGetConfig())) {
+                return HttpResponse(200, mapOf("grpc-status" to "7"), byteArrayOf())
+            }
             val dish = url.startsWith("http://192.168.100.1:9201/")
             if (!dish && routerSilent) throw IOException("Router stopped answering")
             return when {

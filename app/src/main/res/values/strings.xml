@@ -7,9 +7,9 @@
     <string name="wifi_off">Wi-Fi off</string>
     <string name="wifi_secure">Wi-Fi on with password</string>
     <string name="configured_title">Your Mini is already set up</string>
-    <string name="configured_body">You can check its details here. Changing how it works needs a reset first.</string>
+    <string name="configured_body">Here is your Mini’s current Wi-Fi setup.</string>
     <string name="bypass_title">The Mini’s Wi-Fi is off</string>
-    <string name="bypass_body">Your Mini is answering through the cable. You can check its details here. Turning its Wi-Fi back on needs a reset first.</string>
+    <string name="bypass_body">Wi-Fi is off. Your phone reaches Starlink directly through the Mini.</string>
     <string name="rebooting_title">Waiting for your Mini</string>
     <string name="rebooting_body">It stopped answering. It may be restarting. This usually takes about 2 minutes.</string>
     <string name="rebooting_help">We will check every 3 seconds for up to 3 minutes. If it still does not answer, we will show you how to reconnect.</string>
@@ -186,4 +186,13 @@
     <string name="setup_launch_label">Set up Mini</string>
     <string name="setup_shortcut_long_label">Choose your Mini’s Wi-Fi</string>
     <string name="setup_tile_description">Set up Mini. Open the app to choose how to use your Mini.</string>
+    <string name="unknown_title">We can’t read this Mini’s settings</string>
+    <string name="unknown_body">Starlink answered, but we can’t tell how this Mini is set up. You can check again.</string>
+    <string name="unknown_icon_description">Magnifying glass: Mini settings could not be read</string>
+    <string name="home_wifi_status">Wi-Fi status</string>
+    <string name="home_password_hidden">The Mini keeps the password hidden. Check where you wrote it down, or reset the Mini to choose a new one.</string>
+    <string name="home_password_saved">This phone has a saved password for this Wi-Fi name.</string>
+    <string name="home_no_password">No password</string>
+    <string name="home_reset_note">To change this setup, reset the Mini to its factory settings first.</string>
+    <string name="home_reset_guide">How to reset the Mini</string>
 </resources>

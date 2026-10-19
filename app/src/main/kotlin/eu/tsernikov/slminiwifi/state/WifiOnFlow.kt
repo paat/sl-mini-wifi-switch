@@ -27,7 +27,7 @@ class WifiOnFlow(
         if (attempted) return WifiOnOutcome.Failure(WifiOffError.CantReach)
         if (state != MiniState.SetupPending) {
             return WifiOnOutcome.Failure(
-                if (state == MiniState.Configured || state == MiniState.Bypass) WifiOffError.AlreadySetUp
+                if (state == MiniState.Configured || state == MiniState.Bypass || state == MiniState.Unknown) WifiOffError.AlreadySetUp
                 else WifiOffError.CantReach,
             )
         }

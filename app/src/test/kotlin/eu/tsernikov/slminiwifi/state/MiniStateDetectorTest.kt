@@ -26,6 +26,7 @@ class MiniStateDetectorTest {
         var configReply: HttpResponse? = null
         var infoReply: HttpResponse? = null
         var statusReply: HttpResponse? = null
+        var dishReply: HttpResponse? = null
         var beforeCall: () -> Unit = {}
         val calls = mutableListOf<Pair<String, Int>>()
 
@@ -41,7 +42,7 @@ class MiniStateDetectorTest {
             if (url.startsWith("http://192.168.100.1:9201/")) {
                 check(request == 1008) { "Only device info is requested from the dish" }
                 if (!dishUp) throw IOException("No dish route")
-                return deviceInfo("mini1_prod1", "dish-version")
+                return dishReply ?: deviceInfo("mini1_prod1", "dish-version")
             }
             if (!routerUp) throw IOException("No router route")
             return when (request) {
@@ -95,19 +96,19 @@ class MiniStateDetectorTest {
         assertEquals(2, fake.calls.size)
     }
 
-    @Test fun reachableDishAndOneRouterFailureCannotClaimWifiOff() {
+    @Test fun reachableDishWithoutCgnatMeansUnknownNotMissing() {
         fake.routerUp = false
         for (addresses in listOf(emptyList(), listOf("192.168.1.2"), listOf("100.63.255.255"), listOf("100.128.0.1"))) {
-            assertEquals(MiniState.NotFound, detect(ipv4Addresses = addresses).state)
+            assertEquals(MiniState.Unknown, detect(ipv4Addresses = addresses).state)
         }
     }
 
-    @Test fun repeatedRouterFailuresWithoutCgnatStillDoNotProveWifiOff() {
+    @Test fun reachableDishWithoutCgnatAfterSetupDoesNotClaimRestarting() {
         detect(ipv4Addresses = listOf("192.168.1.2"))
         fake.routerUp = false
         repeat(3) {
             now += 3_000
-            assertEquals(MiniState.Rebooting, detect(ipv4Addresses = listOf("192.168.1.2")).state)
+            assertEquals(MiniState.Unknown, detect(ipv4Addresses = listOf("192.168.1.2")).state)
         }
     }
 
@@ -154,7 +155,8 @@ class MiniStateDetectorTest {
     @Test fun failedEarlyCandidateDoesNotEraseRestartHistory() {
         detect()
         now += 3_000
-        fake.configReply = HttpResponse(503, emptyMap(), byteArrayOf())
+        fake.routerUp = false
+        fake.dishUp = false
         assertEquals(MiniState.NotFound, runCall { detector.detect(fake, recordMiss = false) }.state)
         assertEquals(MiniState.Rebooting, detect(null).state)
     }
@@ -171,7 +173,7 @@ class MiniStateDetectorTest {
     }
 
     @Test fun eachReachableStateCanTransitionToEveryReachableState() {
-        val reachable = listOf(MiniState.SetupPending, MiniState.Configured, MiniState.Bypass)
+        val reachable = listOf(MiniState.SetupPending, MiniState.Configured, MiniState.Bypass, MiniState.Unknown)
         for (from in reachable) for (to in reachable) {
             val subject = MiniStateDetector { now }
             setState(from)
@@ -183,7 +185,7 @@ class MiniStateDetectorTest {
     }
 
     @Test fun eachReachableStateCanRestartAndRecoverToEveryReachableState() {
-        val reachable = listOf(MiniState.SetupPending, MiniState.Configured, MiniState.Bypass)
+        val reachable = listOf(MiniState.SetupPending, MiniState.Configured, MiniState.Bypass, MiniState.Unknown)
         for (from in reachable) for (to in reachable) {
             val subject = MiniStateDetector { now }
             setState(from)
@@ -233,7 +235,7 @@ class MiniStateDetectorTest {
     }
 
     @Test fun notFoundCanRecoverToEveryReachableState() {
-        for (target in listOf(MiniState.SetupPending, MiniState.Configured, MiniState.Bypass)) {
+        for (target in listOf(MiniState.SetupPending, MiniState.Configured, MiniState.Bypass, MiniState.Unknown)) {
             val subject = MiniStateDetector { now }
             assertEquals(MiniState.NotFound, runCall { subject.detect(null) }.state)
             setState(target)
@@ -242,7 +244,7 @@ class MiniStateDetectorTest {
     }
 
     @Test fun staleReachabilityDoesNotImplyRestart() {
-        for (source in listOf(MiniState.SetupPending, MiniState.Configured, MiniState.Bypass)) {
+        for (source in listOf(MiniState.SetupPending, MiniState.Configured, MiniState.Bypass, MiniState.Unknown)) {
             setState(source)
             detect()
             now += 6_001
@@ -271,14 +273,15 @@ class MiniStateDetectorTest {
         assertEquals(MiniState.Rebooting, detect(null).state)
     }
 
-    @Test fun aReplyingRouterWithUnavailableConfigNeverMeansSetupOrBypass() {
+    @Test fun aReplyingRouterWithUnavailableConfigMeansUnknownNotMissing() {
         for (reply in listOf(
             HttpResponse(200, mapOf("grpc-status" to "7"), byteArrayOf()),
             HttpResponse(503, emptyMap(), byteArrayOf()),
             HttpResponse(200, mapOf("grpc-status" to "0"), byteArrayOf(0)),
+            response(3009, byteArrayOf()),
         )) {
             fake.configReply = reply
-            assertEquals(MiniState.NotFound, detect().state)
+            assertEquals(MiniState.Unknown, detect().state)
         }
     }
 
@@ -286,7 +289,18 @@ class MiniStateDetectorTest {
         detect()
         now += 3_000
         fake.configReply = HttpResponse(200, mapOf("grpc-status" to "7"), byteArrayOf())
-        assertEquals(MiniState.NotFound, detect().state)
+        assertEquals(MiniState.Unknown, detect().state)
+    }
+
+    @Test fun dishAnswerWithoutReadableInfoMeansUnknownEvenWithCgnat() {
+        fake.routerUp = false
+        for (reply in listOf(
+            HttpResponse(200, mapOf("grpc-status" to "7"), byteArrayOf()),
+            HttpResponse(200, mapOf("grpc-status" to "0"), byteArrayOf(0)),
+        )) {
+            fake.dishReply = reply
+            assertEquals(MiniState.Unknown, detect().state)
+        }
     }
 
     @Test fun unavailableDetailsDoNotPreventSetupDetection() {
@@ -327,6 +341,9 @@ class MiniStateDetectorTest {
         fake.routerUp = state != MiniState.Bypass
         fake.dishUp = true
         fake.setupComplete = state == MiniState.Configured
+        fake.configReply = if (state == MiniState.Unknown) {
+            HttpResponse(200, mapOf("grpc-status" to "7"), byteArrayOf())
+        } else null
     }
 
     companion object {

@@ -305,3 +305,91 @@ before the passing targeted and full runs.
 Final affected-image verification: `:app:verifyRoborazziDebug --tests
 '*SetupReconnectScreensTest'` passed all **10 tests in 1 suite** against the recorded
 images after the shared presentation refactor, with no image differences.
+
+
+## #22: Read-only Home status
+
+Configured Home now shows radio state, distinct Wi-Fi names and password availability
+without opening Details. The real saved password stays behind the existing result
+flow, offered on configured Home only for a matching secured Wi-Fi name. A matching
+name does not prove that the saved password is still valid; the result remains
+explicitly unverified. Other Home states keep the existing saved-profile recovery.
+The protocol parser still discards masked password fields.
+
+Configured, Wi-Fi-off and unreadable-settings Home states all explain that changing
+setup requires a factory reset and open the existing Reset help with a primary
+button. Unknown never enables setup. NotFound is reserved for silent endpoints,
+subject to the existing bounded restart wait.
+
+### Regression evidence
+
+All probes used fake transports, and no real hardware was contacted.
+
+| Area | Tests / evidence |
+|---|---|
+| Unreadable answers | MiniStateDetectorTest: router config refused initially/after setup; dish answering without CGNAT initially/after setup; unreadable dish information with CGNAT. All five failed before the fix. |
+| State transitions and write refusal | Detector reachable/restart/recovery matrices now include Unknown. WifiOffFlowTest and WifiOnFlowTest each assert Unknown returns reset guidance with zero requests. Expanded state baseline: 72 tests, 10 failures, zero errors/skips. |
+| Candidate selection | SetupViewModelNetworkTest preserves an Unknown answer when a later network is silent and preserves sole Unknown instead of connection guides. Both failed before the fix. A later readable setup still wins. An additional assertion reproduced an erroneous 180000 ms restart timer after an Unknown answer; excluding that answered scan from miss recording fixed it. |
+| Password matching | SetupViewModelHomeStatusTest initially had six tests: four failed for mismatched names, stale/unreadable config, open authentication and unknown authentication; two preservation checks passed. Final nine tests also cover no saved profile, mixed authentication for one name, and a separate open network. |
+| Home UI | HomeStatusTest: all 12 initial regressions failed before the UI fix. They cover quick status, equal/differing bands, globally disabled radios, disabled service sets, distinct names, hidden/open passwords, tap-only saved credentials, reset actions and 200% text. Five later checks cover Unknown heading/actions/accessibility, absent readings and direct-Starlink wording. The quick-status fixture includes the router's masked password bytes and confirms they never reach the UI. |
+| Accessibility / screenshots | Labelled state icons, 64 dp reset action, 48 dp other targets, scrollable 200% text with no text-layout overflow. HomeStatusScreenshotsTest records configured with/without saved credentials, Wi-Fi off and Unknown in light/dark at 100%/200% fonts. |
+
+**Already green before the fix:** matching secured credentials still opened the
+existing unverified result; error-screen credential recovery still worked; a later
+readable SetupPending candidate already won over an unreadable candidate; the
+expanded stale-reachability test already ended in NotFound. These are preservation
+checks, not reproduced failures. Eight further behavior checks (five UI and three
+credential checks) and 16 screenshot cases were added after implementation, so no
+pre-fix failure is claimed for them.
+
+### Validation on 2026-10-19
+
+The requested command was run, then repeated with all tasks forced after final
+test edits:
+
+    ./gradlew :protocol:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --rerun-tasks
+
+Final result: **384 app tests in 26 suites**, **52 protocol tests in 5 suites**;
+**436 tests in 31 suites**, with **0 failures, 0 errors, 0 skipped**. All 59
+actionable Gradle tasks executed; build succeeded in 22 seconds. Android lint:
+**20 warnings, 0 errors**. Debug APK assembled. An earlier successful build printed
+an internal Kotlin lint analysis exception while a test file was being updated;
+the stable final rerun completed without that exception.
+
+Screenshot task selection (used for both record and verify):
+
+    ./gradlew :app:recordRoborazziDebug --tests '*HomeStatusScreenshotsTest' \
+      --tests '*ScreenshotsTest.configuredLight' --tests '*ScreenshotsTest.configuredDark' \
+      --tests '*ScreenshotsTest.wifiOffLight' --tests '*ScreenshotsTest.wifiOffDark' \
+      --tests '*ScreenshotsTest.savedPasswordHomeLight' --tests '*ScreenshotsTest.savedPasswordHomeDark'
+
+Replace recordRoborazziDebug with verifyRoborazziDebug to verify the same selection.
+This covers **22 tests in 2 suites**: **40 new PNGs** in screenshots/m5-status
+and **6 updated M1 PNGs**. No unrelated screenshot baselines were re-recorded.
+Recording passed in 9 seconds; verification passed in 8 seconds with **0 failures,
+0 errors, 0 skipped tests** and no image differences.
+
+### Human follow-up (not performed)
+
+These checks are read-only and do not require a setup write:
+
+1. On an already configured Mini, connect the phone by cable or its saved Wi-Fi.
+   Use the existing read-only checks above to compare radio status, names and
+   authentication with Home. If bands differ, check each displayed band; if they
+   agree, check the single summary.
+2. With a matching profile saved on the phone, tap Show my Wi-Fi password and check
+   the existing unverified saved-name/password/QR result. With no matching profile,
+   expect the hidden-password sentence. On an existing open network, expect
+   No password. Do not record real credentials in logs or findings.
+3. On a Mini already operating with Wi-Fi off, connect Ethernet. With the known
+   router-silence/dish/CGNAT evidence, expect Wi-Fi off and direct Starlink wording.
+4. If the connected firmware refuses configuration reads, expect unreadable settings,
+   not cable/join guidance or setup choices. This case is otherwise covered by fake
+   transports; do not change hardware merely to force it.
+5. In all three states, tap How to reset the Mini: check the existing illustrated
+   offline reset guide and return without performing a physical reset.
+6. Repeat the three Home states with TalkBack and 200% font size; check reading
+   order, reachable actions and field readability on the actual phone.
+
+Physical Mini checks, real-device TalkBack and outdoor usability remain unperformed.
+CI workflows, signing, versions and protocol messages were not changed.

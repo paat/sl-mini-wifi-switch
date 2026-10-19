@@ -82,7 +82,8 @@ class MainActivity : ComponentActivity() {
                     when (screen) {
                         Screen.Home -> HomeScreen(
                             snapshot = snapshot,
-                            onShowCredentials = if (savedProfile != null) ::showSavedPassword else null,
+                            onShowCredentials = if (canShowHomeCredentials) ::showSavedPassword else null,
+                            savedWifiName = savedProfile?.name,
                             isChecking = checking,
                             isConnecting = requestingWifi,
                             message = message,

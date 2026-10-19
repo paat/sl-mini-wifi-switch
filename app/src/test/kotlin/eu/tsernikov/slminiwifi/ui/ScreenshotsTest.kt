@@ -79,6 +79,7 @@ class ScreenshotsTest {
         if (state == MiniState.Rebooting) compose.mainClock.advanceTimeBy(400)
         val name = "home_${when (state) {
             MiniState.SetupPending -> "setup_pending"
+            MiniState.Unknown -> "unknown"
             MiniState.Configured -> "configured"
             MiniState.Bypass -> "wifi_off"
             MiniState.Rebooting -> "rebooting"
@@ -87,7 +88,7 @@ class ScreenshotsTest {
         capture(name)
         val nextStep = when (state) {
             MiniState.SetupPending -> "Wi-Fi off"
-            MiniState.Configured, MiniState.Bypass -> "Details"
+            MiniState.Configured, MiniState.Bypass, MiniState.Unknown -> "Details"
             MiniState.Rebooting, MiniState.NotFound -> "Check again"
         }
         compose.onNodeWithText(nextStep).performScrollTo().assertIsDisplayed().assertHasClickAction()
@@ -115,10 +116,10 @@ class ScreenshotsTest {
         show(dark) {
             HomeScreen(MiniSnapshot(MiniState.Configured, sampleDetails), onRefresh = {}, onConnect = {},
                 onDetails = {}, onSetupChoice = {}, animateGuides = false, onGuide = {},
-                onShowCredentials = { opens++ })
+                onShowCredentials = { opens++ }, savedWifiName = "Field Mini")
         }
         capture("home_saved_password_${theme(dark)}")
-        compose.onNodeWithText("Show my Wi-Fi password").assertIsDisplayed().performClick()
+        compose.onNodeWithText("Show my Wi-Fi password").performScrollTo().assertIsDisplayed().performClick()
         assertEquals(1, opens)
     }
 

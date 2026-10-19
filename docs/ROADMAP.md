@@ -71,6 +71,13 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Preserve the reboot deadline through probe timeout and lifecycle release (T-003, T-005)
 - [x] Keep the typed form on return and request setup Wi-Fi only after a Reconnect tap (T-004)
 
+## Configured Home status (#22)
+
+- [x] Home quick status for configured Wi-Fi, direct Starlink connection with Wi-Fi off, and unreadable settings; prominent existing reset help in every case
+- [x] Summarized radio state, Wi-Fi names, open/hidden password wording, and saved-password access only for a matching secured name on configured Home
+- [x] Unknown detection and conservative setup refusal, regression tests, light/dark/200% status screenshots in `docs/screenshots/m5-status/`
+- [ ] Human read-only Home and TalkBack checks (TESTING.md #22)
+
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found

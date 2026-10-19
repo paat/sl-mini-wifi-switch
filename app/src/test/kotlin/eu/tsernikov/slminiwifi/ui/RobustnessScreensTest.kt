@@ -10,6 +10,10 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import eu.tsernikov.slminiwifi.data.Profile
+import eu.tsernikov.slminiwifi.protocol.AuthKind
+import eu.tsernikov.slminiwifi.protocol.BasicServiceSet
+import eu.tsernikov.slminiwifi.protocol.Network
+import eu.tsernikov.slminiwifi.protocol.WifiConfig
 import eu.tsernikov.slminiwifi.state.MiniDetails
 import eu.tsernikov.slminiwifi.state.MiniSnapshot
 import eu.tsernikov.slminiwifi.state.MiniState
@@ -28,13 +32,18 @@ import org.robolectric.annotation.GraphicsMode
 class RobustnessScreensTest {
     @get:Rule val compose = createComposeRule()
 
+    private val savedDetails = MiniDetails(config = WifiConfig(setupComplete = true,
+        networks = listOf(Network(basicServiceSets = listOf(
+            BasicServiceSet(ssid = "Mini-Camp", authKind = AuthKind.WPA2_WPA3),
+        )))))
+
     @Test fun savedPasswordEntryAvailableInEveryHomeState() {
         val state = mutableStateOf(MiniState.Configured)
         var opens = 0
         compose.setContent {
             MiniTheme {
-                HomeScreen(MiniSnapshot(state.value), onRefresh = {}, onConnect = {}, onDetails = {},
-                    onSetupChoice = {}, animateGuides = false, onShowCredentials = { opens++ })
+                HomeScreen(MiniSnapshot(state.value, savedDetails), onRefresh = {}, onConnect = {}, onDetails = {},
+                    onSetupChoice = {}, animateGuides = false, onShowCredentials = { opens++ }, savedWifiName = "Mini-Camp")
             }
         }
         MiniState.entries.forEach { current ->
@@ -52,7 +61,9 @@ class RobustnessScreensTest {
             MiniTheme {
                 if (model.screen == eu.tsernikov.slminiwifi.SetupViewModel.Screen.Home) {
                     HomeScreen(model.snapshot, onRefresh = {}, onConnect = {}, onDetails = {},
-                        onSetupChoice = {}, animateGuides = false, onShowCredentials = model::showSavedPassword)
+                        onSetupChoice = {}, animateGuides = false,
+                        onShowCredentials = if (model.canShowHomeCredentials) model::showSavedPassword else null,
+                        savedWifiName = model.savedProfile?.name)
                 } else {
                     WifiOnResultScreen(model.profile, {}, null, model::returnHome, verified = model.wifiVerified)
                 }
@@ -60,7 +71,7 @@ class RobustnessScreensTest {
         }
         try {
             for (state in listOf(MiniState.Configured, MiniState.Rebooting, MiniState.NotFound)) {
-                compose.runOnIdle { model.snapshot = MiniSnapshot(state) }
+                compose.runOnIdle { model.snapshot = MiniSnapshot(state, savedDetails) }
                 compose.onNodeWithText("Show my Wi-Fi password").performScrollTo().performClick()
                 compose.onNodeWithText(saved.password).performScrollTo().assertIsDisplayed()
                 compose.onNodeWithContentDescription("Wi-Fi code. Scan with another phone to join this Wi-Fi.")
