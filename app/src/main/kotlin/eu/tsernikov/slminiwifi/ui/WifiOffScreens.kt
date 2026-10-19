@@ -64,10 +64,7 @@ internal fun SetupConnectionStatus(
     @StringRes message: Int? = null,
     onPermissions: (() -> Unit)? = null,
 ) {
-    ConnectionFeedback(
-        if (onPermissions != null) R.string.permission_needed else message,
-        onPermissions,
-    )
+    ConnectionFeedback(message, onPermissions)
     if (onReconnect != null) {
         PrimaryButton(R.string.setup_reconnect, onReconnect)
     } else if (!canConfirm) {

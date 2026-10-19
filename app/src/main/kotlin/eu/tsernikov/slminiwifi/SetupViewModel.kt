@@ -460,9 +460,11 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                 when (outcome) {
                     is WifiOffOutcome.Success -> {
                         likelySuccess = outcome.likely
+                        releaseConnection()
                         screen = Screen.WifiOffResult
                     }
                     is WifiOffOutcome.Failure -> {
+                        releaseConnection()
                         wifiOffError = outcome.error
                         screen = Screen.WifiOffError
                     }
@@ -470,6 +472,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {
+                releaseConnection()
                 wifiOffError = WifiOffError.CantReach
                 screen = Screen.WifiOffError
             }

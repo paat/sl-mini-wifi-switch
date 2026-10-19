@@ -26,7 +26,9 @@ import eu.tsernikov.slminiwifi.state.MiniState
 import java.io.IOException
 import java.net.InetAddress
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -112,6 +114,43 @@ class SetupViewModelLifecycleTest {
                 } finally { controller.pause().stop().destroy() }
             }
         } finally { Dispatchers.resetMain() }
+    }
+
+    @Test fun completedWifiOffWriteReleasesTheStarlinkRequest() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val model = SetupViewModel(application)
+        val store = ViewModelStore().apply { put("setup", model) }
+        try {
+            val connection = ethernet()
+            val request = async(start = CoroutineStart.UNDISPATCHED) { model.networks.requestStarlink() }
+            assertEquals(1, shadowOf(manager).networkCallbacks.size)
+            model.transportFactory = { _, onWritten -> object : Transport {
+                override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): HttpResponse {
+                    if (body.contentEquals(Requests.setupBypass())) {
+                        onWritten()
+                        return response(3003)
+                    }
+                    if (url.contains("192.168.100.1")) {
+                        return response(1004, Wire.Writer().bytes(1,
+                            Wire.Writer().string(2, "mini1_prod1").toByteArray()).toByteArray())
+                    }
+                    throw IOException("Router stopped answering")
+                }
+            } }
+            model.snapshot = MiniSnapshot(MiniState.SetupPending)
+            model.confirmedConnection = connection
+            model.screen = Screen.WifiOff
+            model.checking = false
+            model.confirmWifiOff()
+            runCurrent()
+            assertEquals(Screen.WifiOffResult, model.screen)
+            assertTrue(shadowOf(manager).networkCallbacks.isEmpty())
+            assertTrue(request.isCompleted)
+            assertNull(model.writing?.takeIf { it.isActive })
+        } finally {
+            store.clear()
+            Dispatchers.resetMain()
+        }
     }
 
     @Test fun rotationAndBackgroundKeepAnInFlightWriteAndVerificationAliveWithoutResending() = runTest {
