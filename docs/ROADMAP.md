@@ -111,6 +111,14 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Review cycle 3: quiet background polls with stable setup choices; persist reset-help auto-detection across process death; remove duplicate Home-as-Details captures (T-004, T-005, T-006)
 - [ ] Human reset/reconnect and TalkBack checks (TESTING.md #32)
 
+## Estonian language (#33)
+
+- [x] Plain Estonian UI and store text; English fallback and Android 13+ per-app language selection
+- [x] Package only English and Estonian; lint fails for missing translations
+- [x] Estonian normal/200% light screenshots for seven main screens, with text-fit and touch-target checks
+- [x] Translation glossary and wording questions in TRANSLATION-et.md
+- [ ] Independent second-model translation review before merge; owner review of flagged wording
+
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found

@@ -1,0 +1,15 @@
+Mini Wi-Fi Switch on lihtne rakendus Starlink Mini kasutajale.
+
+Kohe pärast Mini lähtestamist saad:
+
+- Vaadata, kas Mini on valmis.
+- Lülitada Mini Wi-Fi välja ja suunata internet kaabli kaudu oma koduruuterisse.
+- Lülitada Wi-Fi sisse enda valitud nime ja parooliga. Rakendus näitab QR-koodi. Kui Android küsib, vajuta „Salvesta“. Seejärel liitub telefon ise selle Wi-Fi võrguga. Mõnes telefonis tuleb selle asemel anda luba teates.
+- Järgida piltidega juhiseid, sealhulgas Mini lähtestamise juhist ilma internetita.
+- Avada rakenduse kiirseadete nupust.
+
+Rakendus töötab ka internetita. See ei jälgi sind ega näita reklaame. Wi-Fi parool jääb sinu telefoni. Seda ei saadeta kellelegi teisele.
+
+See projekt ei ole Starlinki ega SpaceXiga seotud. Starlink ega SpaceX ei ole projekti heaks kiitnud ega toeta seda. Starlink on SpaceXi kaubamärk. Nime kasutatakse siin ainult selleks, et öelda, millisele antennile rakendus on mõeldud.
+
+Rakenduse ja Mini vahelist suhtlusviisi on käsitsi kontrollitud ühe Starlink Miniga. Rakendust ennast pole veel päris Miniga proovitud. Palun teata probleemidest GitHubis.

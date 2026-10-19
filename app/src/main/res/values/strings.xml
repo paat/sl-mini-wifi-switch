@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Mini Wi-Fi Switch</string>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
+    <string name="app_name" translatable="false">Mini Wi-Fi Switch</string>
     <string name="read_only_note">Checking your Mini does not change its settings.</string>
     <string name="ready_title">Ready to set up</string>
     <string name="wifi_off_choice_body">Cable only. No Wi-Fi from the Mini.</string>
@@ -32,7 +32,7 @@
     <string name="wifi_title">Or connect with Wi-Fi</string>
     <string name="wifi_body">Choose Join STARLINK below. When Android asks, choose STARLINK and tap Connect.</string>
     <string name="wifi_dialog_title">Connect to device</string>
-    <string name="starlink_network">STARLINK</string>
+    <string name="starlink_network" translatable="false">STARLINK</string>
     <string name="connect">Connect</string>
     <string name="wifi_dialog_caption">Example of Android’s connection message</string>
     <string name="wifi_description">A phone asks to connect to the STARLINK network. The Connect button is at the bottom.</string>
@@ -57,16 +57,16 @@
     <string name="lan_address">LAN address / subnet</string>
     <string name="wan_address">WAN address</string>
     <string name="wifi_details">Wi-Fi bands</string>
-    <string name="ssid">SSID</string>
+    <string name="ssid" translatable="false">SSID</string>
     <string name="authentication">Authentication</string>
     <string name="band_2ghz">2.4 GHz</string>
-    <string name="band_5ghz">5 GHz</string>
+    <string name="band_5ghz" translatable="false">5 GHz</string>
     <string name="band_5ghz_high">5 GHz high</string>
     <string name="band_other">Band %1$d</string>
     <string name="auth_open">Open (no password)</string>
-    <string name="auth_wpa2">WPA2</string>
-    <string name="auth_wpa3">WPA3</string>
-    <string name="auth_wpa2_wpa3">WPA2 / WPA3</string>
+    <string name="auth_wpa2" translatable="false">WPA2</string>
+    <string name="auth_wpa3" translatable="false">WPA3</string>
+    <string name="auth_wpa2_wpa3" translatable="false">WPA2 / WPA3</string>
     <string name="radio_status">Radio</string>
     <string name="radio_off">Off</string>
     <string name="radio_on">On</string>
@@ -90,9 +90,9 @@
     <string name="wifi_off_router_instruction">Connect the Mini’s Ethernet cable to your router’s internet port.</string>
     <string name="wifi_off_port_help">Look for WAN, Internet, or a globe symbol. This port is often a different colour.</string>
     <string name="wifi_off_router_description">Mini on the left. Its cable goes to the router’s highlighted Internet port on the right, labelled WAN or Internet.</string>
-    <string name="mini_label">Mini</string>
+    <string name="mini_label" translatable="false">Mini</string>
     <string name="router_label">Router</string>
-    <string name="internet_port_label">WAN / Internet</string>
+    <string name="internet_port_label" translatable="false">WAN / Internet</string>
     <string name="done">Done</string>
     <string name="wifi_off_already_title">This Mini is already set up</string>
     <string name="wifi_off_already_body">Reset the Mini first. Find the reset symbol on its back. Press until it clicks, then keep holding for 3 seconds.</string>
@@ -173,7 +173,7 @@
     <string name="field_wifi_title">Find STARLINK</string>
     <string name="field_wifi_body">Turn on Wi-Fi on your phone. Look for the name STARLINK. It does not need a password.</string>
     <string name="field_wifi_description">A drawn phone Wi-Fi list with the open network STARLINK marked by a Wi-Fi symbol. Choose this name.</string>
-    <string name="field_wifi_list_title">Wi-Fi</string>
+    <string name="field_wifi_list_title" translatable="false">Wi-Fi</string>
     <string name="field_wifi_open">No password needed</string>
     <string name="field_android_title">Tap Connect when asked</string>
     <string name="field_android_body">Tap Join STARLINK below. In Android’s message, choose STARLINK and tap Connect.</string>
