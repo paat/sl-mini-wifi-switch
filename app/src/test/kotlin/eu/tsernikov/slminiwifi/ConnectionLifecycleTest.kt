@@ -28,6 +28,7 @@ import java.net.Inet4Address
 import java.net.InetAddress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -96,12 +97,16 @@ class ConnectionLifecycleTest {
                 assertEquals(wifi, model.detectedConnection?.network)
                 assertNull(model.writing)
 
+                val polling = model.polling
                 scenario.onActivity {
                     model.releaseConnection()
                     model.start()
                 }
                 runCurrent()
                 assertTrue(connectivity.networkCallbacks.isEmpty())
+                assertSame(polling, model.polling)
+                advanceTimeBy(3_000)
+                runCurrent()
                 assertEquals(MiniState.NotFound, model.snapshot.state)
                 compose.onNodeWithText(application.getString(R.string.join_starlink))
                     .performScrollTo().assertIsDisplayed().performClick()

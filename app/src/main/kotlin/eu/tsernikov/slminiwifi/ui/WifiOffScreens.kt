@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
@@ -30,7 +29,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import eu.tsernikov.slminiwifi.R
-import eu.tsernikov.slminiwifi.state.MiniState
 import eu.tsernikov.slminiwifi.state.WifiOffError
 
 /** Presentation only: the sole write action is delegated by the confirmation button. */
@@ -180,34 +178,26 @@ fun WifiOffErrorScreen(
 /** All text and drawings are bundled; this card needs no connection. */
 @Composable
 fun ResetGuideScreen(
-    onDone: () -> Unit,
+    onBack: () -> Unit,
     animateGuides: Boolean = true,
-    onBack: () -> Unit = onDone,
-    state: MiniState = MiniState.NotFound,
-    isChecking: Boolean = false,
+    autoDetect: Boolean = false,
 ) {
-    // A restart detected while reading lower steps must bring its progress into view.
-    key(state == MiniState.Rebooting) {
-        Screen {
-            SecondaryButton(R.string.back, onBack)
-            Heading(stringResource(R.string.reset_title))
-            if (state == MiniState.Rebooting) {
-                Text(stringResource(R.string.rebooting_title), style = MaterialTheme.typography.titleLarge)
-                WaitingProgress(animateGuides)
-                Text(stringResource(R.string.rebooting_body))
-                Text(stringResource(R.string.rebooting_help))
-            }
-            Text(stringResource(R.string.field_offline_note))
-            Text(stringResource(R.string.field_reset_warning))
-            Text(stringResource(R.string.reset_press))
-            ResetIllustration(animateGuides)
-            Text(stringResource(R.string.reset_light))
-            ResetLightIllustration(animateGuides)
-            Text(stringResource(R.string.reset_wait))
-            RestartIllustration(animateGuides)
-            Text(stringResource(R.string.reset_ready))
-            if (state == MiniState.NotFound && !isChecking) PrimaryButton(R.string.check_again, onDone)
+    Screen {
+        SecondaryButton(R.string.back, onBack)
+        Heading(stringResource(R.string.reset_title))
+        if (autoDetect) {
+            WaitingProgress(animateGuides)
+            Text(stringResource(R.string.reset_checking))
         }
+        Text(stringResource(R.string.field_offline_note))
+        Text(stringResource(R.string.field_reset_warning))
+        Text(stringResource(R.string.reset_press))
+        ResetIllustration(animateGuides)
+        Text(stringResource(R.string.reset_light))
+        ResetLightIllustration(animateGuides)
+        Text(stringResource(R.string.reset_wait))
+        RestartIllustration(animateGuides)
+        Text(stringResource(R.string.reset_ready))
     }
 }
 

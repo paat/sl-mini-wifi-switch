@@ -120,19 +120,24 @@ wait, and either cable connection or STARLINK plus Android's Connect dialog. Its
 last step returns to existing state detection. Back retraces the selected path;
 the step survives activity recreation without restoring any pending write.
 **Reset help** is an offline card reachable from Home and every error presentation.
-It explains that reset removes the saved Wi-Fi name/password. Home and Reset help
-poll read-only every 3 seconds while foregrounded. The screen setter applies the
-same polling eligibility gate as start(), and stop() cancels it. Every other screen,
-including all Start here pages, editing, confirmations and writes, cancels Home polling.
-A transition from a non-SetupPending observation into SetupPending automatically opens
-Home from Reset help opened from Home, an AlreadySetUp error, or a verified Wi-Fi
-result; no tap or write is involved. Repeated SetupPending observations leave the
-guide open. Help opened from password editing or an unverified result preserves
-that origin and its credentials even across a readiness transition.
-Rebooting keeps visible progress for the existing three-minute deadline, including
-across stop/start. NotFound ends polling and offers Check again; other states have
-no manual retry. Reset help's Back preserves its origin, including saved credentials;
-its stopped-check retry also returns to a result when opened from that result.
+It explains that reset removes the saved Wi-Fi name/password. Home polls read-only
+every 3 seconds while foregrounded. Reset help uses that same poll only when opened
+from Home, an AlreadySetUp error, or a verified Wi-Fi result. This origin rule also
+controls its top-of-guide waiting/progress text. All other help origins stay offline,
+so Back preserves editing/confirmation evidence and result credentials.
+The screen setter and start() share polling eligibility; an already running poll
+survives navigation between eligible screens, including automatic return to Home.
+Every read sets checking until it completes; the interval between reads does not.
+stop() cancels polling. All Start here pages, editing, confirmations and writes
+cancel Home polling.
+A transition from a non-SetupPending observation into SetupPending automatically
+opens Home from eligible Reset help; no tap or write is involved. Repeated
+SetupPending observations leave the guide open.
+Home retains its three-minute restart deadline, including across stop/start;
+NotFound ends Home polling and offers Check again. Eligible Reset help continues
+polling every 3 seconds even after NotFound, until navigation or backgrounding.
+Its waiting text stays at the top without recreating the scrollable column when
+observations change. Reset help has only Back, which preserves its origin.
 Guide step changes start at the top, including Back and alternate paths.
 Home keeps restart waiting prominent without a Start here reset action while polling.
 The Start here pages remain offline and do not start network work.

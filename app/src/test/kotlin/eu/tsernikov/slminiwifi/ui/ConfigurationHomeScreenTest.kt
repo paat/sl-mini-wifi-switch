@@ -85,9 +85,8 @@ class ConfigurationHomeScreenTest {
 
     @Test fun resetGuideShowsRestartProgressWithoutManualRetry() {
         compose.show(false) {
-            ResetGuideScreen({}, animateGuides = false, state = MiniState.Rebooting)
+            ResetGuideScreen({}, animateGuides = false, autoDetect = true)
         }
-        compose.onNodeWithText("Waiting for your Mini to restart…").assertIsDisplayed()
         compose.onNodeWithText("Waiting for the Mini to answer").assertIsDisplayed()
         compose.onNodeWithText("This can take up to 1 minute. If it takes longer, try checking again.")
             .assertDoesNotExist()
@@ -95,7 +94,7 @@ class ConfigurationHomeScreenTest {
     }
 
     @Test fun configuredResetGuideHasNoManualRetryWhileAutoChecking() {
-        compose.show(false) { ResetGuideScreen({}, animateGuides = false, state = MiniState.Configured) }
+        compose.show(false) { ResetGuideScreen({}, animateGuides = false, autoDetect = true) }
         compose.onNodeWithText("Check again").assertDoesNotExist()
         compose.onNodeWithText("Back").assertIsDisplayed()
     }
@@ -112,13 +111,28 @@ class ConfigurationHomeScreenTest {
         compose.onNodeWithText("Check again").assertDoesNotExist()
     }
 
-    @Test fun restartProgressBecomesVisibleWhileReadingBottomOfResetGuide() {
-        val state = androidx.compose.runtime.mutableStateOf(MiniState.Configured)
-        compose.show(false) { ResetGuideScreen({}, animateGuides = false, state = state.value) }
+    @Test fun resetGuideKeepsScrollAcrossRestartAndNotFound() {
+        val state = androidx.compose.runtime.mutableStateOf(MiniState.Rebooting)
+        compose.show(false) { ResetGuideScreen({}, animateGuides = false, autoDetect = state.value in listOf(MiniState.Rebooting, MiniState.NotFound)) }
         compose.onNodeWithText("The Mini is ready to set up when this app says", substring = true)
             .performScrollTo().assertIsDisplayed()
-        compose.runOnIdle { state.value = MiniState.Rebooting }
-        compose.onNodeWithText("Waiting for your Mini to restart…").assertIsDisplayed()
+        val scroll = compose.onNode(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(
+            androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))
+        val before = scroll.fetchSemanticsNode().config[
+            androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange].value()
+        assertTrue(before > 0)
+        compose.runOnIdle { state.value = MiniState.NotFound }
+        assertEquals(before, scroll.fetchSemanticsNode().config[
+            androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange].value())
+        compose.onNodeWithText("Check again").assertDoesNotExist()
+    }
+
+    @Test fun notFoundResetGuideStillShowsWaitingAtTop() {
+        compose.show(false) {
+            ResetGuideScreen({}, animateGuides = false, autoDetect = true)
+        }
+        compose.onNodeWithText("Waiting for the Mini to answer").assertIsDisplayed()
+        compose.onNodeWithText("Check again").assertDoesNotExist()
     }
 
     private fun noCheck(state: MiniState) {

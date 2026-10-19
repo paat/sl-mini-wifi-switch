@@ -107,7 +107,8 @@
     <string name="reset_press">Keep the Mini powered on. Find the reset symbol on the back. Press until it clicks. Keep holding for 3 seconds.</string>
     <string name="reset_press_description">Back of the Mini with the reset symbol circled. A finger presses and holds the symbol.</string>
     <string name="reset_light">The light blinks quickly, then goes off. Release the button and wait about 2 minutes for the STARLINK Wi-Fi to appear.</string>
-    <string name="reset_wait">Allow about 3 minutes in total. If STARLINK does not appear, check the power and connect a cable to check again.</string>
+    <string name="reset_wait">Allow about 3 minutes in total. If STARLINK does not appear, check the power and connect a cable.</string>
+    <string name="reset_checking">We will check every 3 seconds while this guide is open. After the reset, we will show “Ready to set up” when your Mini answers.</string>
     <string name="reset_ready">The Mini is ready to set up when this app says “Ready to set up”. Choose “Wi-Fi on with password” to turn Wi-Fi back on.</string>
     <string name="wifi_on_name">Wi-Fi name</string>
     <string name="wifi_on_password">Password</string>

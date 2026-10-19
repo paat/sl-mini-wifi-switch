@@ -21,6 +21,8 @@ import eu.tsernikov.slminiwifi.ui.GuideStep
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -105,7 +107,7 @@ class ConfigurationHomeTest {
         } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
     }
 
-    @Test fun saveFailureResetHelpKeepsDraftEvenAcrossAReadinessTransition() = runTest {
+    @Test fun backFromSaveFailureHelpKeepsConfirmWorkingWithoutPolling() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val model = newModel()
         try {
@@ -115,12 +117,16 @@ class ConfigurationHomeTest {
             model.openWifiOn()
             val draft = Profile("My field Mini", "MyDraftPassword77")
             model.profile = draft
+            var storageFails = true
             model.profiles = ProfileStore(object : ProfileCipher {
-                override fun encrypt(plaintext: ByteArray): ByteArray = throw IOException("Storage unavailable")
+                override fun encrypt(plaintext: ByteArray): ByteArray {
+                    if (storageFails) throw IOException("Storage unavailable")
+                    return plaintext.copyOf()
+                }
                 override fun decrypt(ciphertext: ByteArray): ByteArray = error("Unused")
             }, object : ProfileBlob {
                 override fun read(): ByteArray? = null
-                override fun write(ciphertext: ByteArray) = error("Encryption must fail first")
+                override fun write(ciphertext: ByteArray) {}
             })
             model.screen = Screen.WifiOnConfirm
             model.confirmWifiOn()
@@ -137,14 +143,25 @@ class ConfigurationHomeTest {
             state = MiniState.Rebooting
             advanceTimeBy(3_000)
             runCurrent()
-            state = MiniState.SetupPending
-            advanceTimeBy(3_000)
-            runCurrent()
-            assertEquals(Screen.ResetGuide, model.screen)
+            // Return while the fake Mini is still silent: help must not replace setup evidence.
             model.closeHelp()
             assertEquals(Screen.WifiOn, model.screen)
             assertSame(draft, model.profile)
             assertEquals(R.string.wifi_on_store_before_setup_failed, model.profileError)
+            assertTrue(model.canConfirm)
+            storageFails = false
+            var writes = 0
+            model.transportFactory = { _, _ -> object : Transport {
+                override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): HttpResponse {
+                    assertArrayEquals(Requests.setupWifi(draft.name, draft.password), body)
+                    writes++
+                    return HttpResponse(200, mapOf("grpc-status" to "9"), byteArrayOf())
+                }
+            } }
+            model.screen = Screen.WifiOnConfirm
+            model.confirmWifiOn()
+            model.writing!!.join()
+            assertEquals("Confirm sends exactly once after Back", 1, writes)
         } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
     }
 
@@ -296,7 +313,7 @@ class ConfigurationHomeTest {
         } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
     }
 
-    @Test fun resetGuideTimeoutStopsAtOriginalDeadlineAndCanRetry() = runTest {
+    @Test fun resetGuideKeepsPollingAfterRebootDeadlineWithoutTap() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val model = newModel()
         org.robolectric.util.ReflectionHelpers.setField(model, "detector",
@@ -321,12 +338,126 @@ class ConfigurationHomeTest {
             runCurrent()
             assertEquals(MiniState.NotFound, model.snapshot.state)
             assertEquals(Screen.ResetGuide, model.screen)
-            assertFalse(model.polling!!.isActive)
+            assertTrue(model.polling!!.isActive)
+            val afterDeadlineReads = reads
+            advanceTimeBy(2_999)
+            runCurrent()
+            assertEquals(afterDeadlineReads, reads)
+            advanceTimeBy(1)
+            runCurrent()
+            assertTrue(reads > afterDeadlineReads)
             state = MiniState.SetupPending
-            model.checkAfterHelp()
+            advanceTimeBy(3_000)
             runCurrent()
             assertEquals(MiniState.SetupPending, model.snapshot.state)
             assertEquals(Screen.Home, model.screen)
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun initiallyMissingMiniIsDetectedWhileResetHelpRemainsOpen() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            state = MiniState.NotFound
+            model.start()
+            runCurrent()
+            model.openHelp()
+            runCurrent()
+            val initialReads = reads
+            advanceTimeBy(183_000)
+            runCurrent()
+            assertTrue(model.polling!!.isActive)
+            assertTrue(reads > initialReads)
+            state = MiniState.SetupPending
+            advanceTimeBy(3_000)
+            runCurrent()
+            assertEquals(Screen.Home, model.screen)
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun otherHelpOriginsNeverPollIncludingAfterStopStart() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            model.start()
+            runCurrent()
+            for (origin in listOf(Screen.WifiOn, Screen.WifiOnConfirm, Screen.WifiOff,
+                Screen.WifiOffResult, Screen.WifiOnResult, Screen.WifiOffError)) {
+                model.screen = origin
+                model.wifiVerified = false
+                model.wifiOffError = eu.tsernikov.slminiwifi.state.WifiOffError.CantReach
+                model.openHelp()
+                val beforeHelpReads = reads
+                runCurrent()
+                model.stop()
+                model.start()
+                advanceTimeBy(6_000)
+                runCurrent()
+                assertEquals("No reads from $origin help", beforeHelpReads, reads)
+                assertFalse(model.polling?.isActive == true)
+                model.closeHelp()
+                assertEquals(origin, model.screen)
+            }
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun immediateNavigationKeepsInFlightPollAndChecking() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            val transport = model.transportFactory
+            val resume = CompletableDeferred<Unit>()
+            var startedReads = 0
+            model.transportFactory = { connection, written -> object : Transport {
+                override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): HttpResponse {
+                    startedReads++
+                    resume.await()
+                    return transport(connection, written).post(url, headers, body)
+                }
+            } }
+            model.screen = Screen.Details
+            model.start()
+            model.returnHome()
+            assertEquals("returnHome starts only one read", 1, startedReads)
+            val job = model.polling
+            assertTrue(model.checking)
+            model.openHelp()
+            assertSame(job, model.polling)
+            assertEquals(1, startedReads)
+            assertTrue(model.checking)
+            resume.complete(Unit)
+            assertFalse(model.checking)
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun immediateAutoAdvanceKeepsJobAndNextReadReportsChecking() = runTest {
+        Dispatchers.setMain(UnconfinedTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            model.start()
+            model.openHelp()
+            val job = model.polling
+            val beforeTransitionReads = reads
+            state = MiniState.SetupPending
+            advanceTimeBy(3_000)
+            runCurrent()
+            assertEquals(Screen.Home, model.screen)
+            assertSame("Auto-advance must retain the poll", job, model.polling)
+            assertEquals("One four-request probe, no immediate re-probe", beforeTransitionReads + 4, reads)
+            assertFalse(model.checking)
+            val resume = CompletableDeferred<Unit>()
+            val transport = model.transportFactory
+            model.transportFactory = { connection, written -> object : Transport {
+                override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): HttpResponse {
+                    resume.await()
+                    return transport(connection, written).post(url, headers, body)
+                }
+            } }
+            advanceTimeBy(3_000)
+            runCurrent()
+            assertTrue("Every in-flight poll reports checking", model.checking)
+            resume.complete(Unit)
+            assertFalse(model.checking)
         } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
     }
 

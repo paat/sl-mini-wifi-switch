@@ -218,30 +218,29 @@ class FieldGuideScreenshotsTest {
 
     private fun resetWaiting(dark: Boolean, fontScale: Float = 1f) {
         compose.show(dark, fontScale) {
-            ResetGuideScreen({}, animateGuides = false, state = MiniState.Rebooting)
+            ResetGuideScreen({}, animateGuides = false, autoDetect = true)
         }
         capture("reset_waiting_${suffix(dark, fontScale)}")
-        compose.onNodeWithText("Waiting for your Mini to restart…").assertIsDisplayed()
+        compose.onNodeWithText("Waiting for the Mini to answer").assertIsDisplayed()
         compose.onNodeWithText("Check again").assertDoesNotExist()
         checkFieldSizesAndText()
     }
 
     private fun help(dark: Boolean, fontScale: Float = 1f) {
         var back = 0
-        var checks = 0
-        compose.show(dark, fontScale) { ResetGuideScreen({ checks++ }, false, { back++ }) }
+        compose.show(dark, fontScale) { ResetGuideScreen({ back++ }, false) }
         val name = "offline_help_${suffix(dark, fontScale)}"
         capture(name)
         compose.onNodeWithContentDescription(lightDescription).performScrollTo().assertIsDisplayed()
         capture("${name}_light")
         compose.onNodeWithContentDescription(restartDescription).performScrollTo().assertIsDisplayed()
         capture("${name}_restart")
-        compose.onNodeWithText("Check again").performScrollTo().assertHeightIsAtLeast(64.dp).performClick()
+        compose.onNodeWithText("Check again").assertDoesNotExist()
+        compose.onNodeWithText("Back").performScrollTo().assertIsDisplayed()
         capture("${name}_actions")
         checkFieldSizesAndText()
         compose.onNodeWithText("Back").performScrollTo().performClick()
         assertEquals(1, back)
-        assertEquals(1, checks)
     }
 
     private fun restarting(dark: Boolean, fontScale: Float = 1f) {

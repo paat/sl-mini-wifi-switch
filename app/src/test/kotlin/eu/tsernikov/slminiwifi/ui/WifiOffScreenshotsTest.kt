@@ -102,12 +102,13 @@ class WifiOffScreenshotsTest {
     }
 
     private fun reset(dark: Boolean, fontScale: Float = 1f) {
-        var checks = 0
-        compose.show(dark, fontScale) { ResetGuideScreen({ checks++ }, animateGuides = false) }
+        var backs = 0
+        compose.show(dark, fontScale) { ResetGuideScreen({ backs++ }, animateGuides = false) }
         val name = "reset_guide_${suffix(dark, fontScale)}"
         capture(name)
-        compose.onNodeWithText("Check again").performScrollTo().assertIsDisplayed().performClick()
-        assertEquals(1, checks)
+        compose.onNodeWithText("Check again").assertDoesNotExist()
+        compose.onNodeWithText("Back").performScrollTo().assertIsDisplayed().performClick()
+        assertEquals(1, backs)
         capture("${name}_actions")
     }
 

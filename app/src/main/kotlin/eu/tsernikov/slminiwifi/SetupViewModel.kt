@@ -107,7 +107,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             if (currentScreen != value) {
                 currentScreen = value
                 clearConnectionFeedback()
-                startPolling(showProgress = true)
+                startPolling()
             }
         }
     var checking by mutableStateOf(false)
@@ -172,13 +172,13 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             permissionDenied = true
             message = R.string.permission_needed
             // Ethernet is still usable if only the Wi-Fi identification permission was refused.
-            startPolling(showProgress = false)
+            startPolling()
         }
     }
 
     private fun performPermissionAction() {
         when (pendingPermissionAction) {
-            PermissionAction.Check -> startPolling(showProgress = true)
+            PermissionAction.Check -> startPolling()
             PermissionAction.Connect -> connectWifi()
             PermissionAction.Reconnect -> reacquireConfirmation(requestWifiIfMissing = true)
             PermissionAction.SecureWifi -> confirmSetup()
@@ -206,7 +206,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             }
             if (connecting?.isActive != true && (screen == Screen.WifiOff || screen == Screen.WifiOnConfirm || screen == Screen.WifiOn)) {
                 reacquireConfirmation()
-            } else startPolling(showProgress = true)
+            } else startPolling()
         } else {
             permissionDenied = true
             message = R.string.permission_needed
@@ -279,11 +279,6 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         screen = helpReturn
     }
 
-    fun checkAfterHelp() {
-        if (helpReturn == Screen.WifiOnResult || helpReturn == Screen.WifiOffResult) closeHelp()
-        else returnHome()
-    }
-
     fun openFromQuickLaunch() {
         if (awaitingPermissionResult || permissionRequest != null || requestingWifi || writing?.isActive == true) return
         val idle = when (screen) {
@@ -299,7 +294,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         connecting?.cancel()
         confirmedConnection = null
         screen = Screen.Home
-        startPolling(showProgress = true)
+        startPolling()
     }
 
     fun openWifiOn() = openSetupChoice(wifiOff = false)
@@ -683,14 +678,22 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
         }
     }
 
-    fun startPolling(showProgress: Boolean) {
-        polling?.cancel()
+    val resetHelpAutoDetect: Boolean
+        get() = helpReturn == Screen.Home ||
+            (helpReturn == Screen.WifiOffError && wifiOffError == WifiOffError.AlreadySetUp) ||
+            (helpReturn == Screen.WifiOnResult && wifiVerified)
+
+    fun startPolling() {
         if (!foreground || requestingWifi || !hasLocalAccess() ||
-            screen !in listOf(Screen.Home, Screen.ResetGuide)) return
+            !(screen == Screen.Home || (screen == Screen.ResetGuide && resetHelpAutoDetect))) {
+            polling?.cancel()
+            return
+        }
+        if (polling?.isActive == true) return
         val job = scope.launch(start = CoroutineStart.LAZY) {
-            checking = showProgress
             try {
                 while (isActive) {
+                    checking = true
                     val remaining = detector.rebootTimeRemainingMillis
                     val detected = if (remaining == null) detectAvailable() else {
                         withTimeoutOrNull(remaining) { detectAvailable() }
@@ -701,12 +704,10 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                     snapshot = detected.second
                     rememberDetails(snapshot)
                     checking = false
-                    if (previousState != MiniState.SetupPending && snapshot.state == MiniState.SetupPending &&
-                        (screen == Screen.Home || (screen == Screen.ResetGuide &&
-                            (helpReturn == Screen.Home ||
-                                (helpReturn == Screen.WifiOffError && wifiOffError == WifiOffError.AlreadySetUp) ||
-                                (helpReturn == Screen.WifiOnResult && wifiVerified))))) screen = Screen.Home
-                    if (snapshot.state == MiniState.NotFound) break
+                    if (previousState != MiniState.SetupPending && snapshot.state == MiniState.SetupPending) {
+                        screen = Screen.Home
+                    }
+                    if (snapshot.state == MiniState.NotFound && screen == Screen.Home) break
                     delay(minOf(MiniStateDetector.POLL_INTERVAL_MILLIS,
                         detector.rebootTimeRemainingMillis ?: MiniStateDetector.POLL_INTERVAL_MILLIS))
                 }

@@ -410,7 +410,8 @@ Before implementation the initial 16 tests produced 13 failures (5 ViewModel,
 retry UI tests already passed. Deadline, suspended-probe and progress-display
 checks were added afterward; no pre-fix failure is claimed for those checks.
 A later scroll regression was also run red (1 test, 1 failure) before fixing it:
-restart progress now comes into view even when Reset help was scrolled to the bottom.
+that implementation re-keyed Reset help to reveal restart progress. Fix cycle 2
+below supersedes this behavior with stable scrolling and persistent waiting text.
 Bypass and Unknown continuous-polling checks were added as preservation tests.
 The earlier cable-after-failed-join test now explicitly taps Check again, because
 NotFound ends polling. No protocol or device-write behavior changed.
@@ -419,13 +420,16 @@ Human checks (not performed):
 
 1. Connect by Ethernet to a configured Mini and open How to reset the Mini.
    Perform the physical reset from M2 step 2 above. Leave this guide open; expect
-   “Waiting for your Mini to restart…” with progress, then “Ready to set up” Home
+   waiting/progress at the top, then “Ready to set up” Home
    automatically, with both explained choices and a small Details action.
 2. Repeat while staying on Home. Rotate and briefly background/return during the
    wait. The original three-minute deadline must remain; no setup write occurs.
 3. Repeat over Wi-Fi, joining STARLINK through Android if the previous connection
    disappears. If checking times out, connect the cable or join STARLINK and tap
-   Check again. Confirm there is no Check again during automatic checking.
+   Check again on Home. In Reset help opened from Home, leave the Mini unreachable
+   for over three minutes: waiting must remain, with no Check again. Reconnect the
+   cable and expect automatic readiness detection without another tap. Scroll down
+   during the wait; state changes must not move the scroll position.
 4. Use TalkBack and 200% fonts in both themes. Check the choice explanations and
    icon description, and ensure password editing, confirmation and every Start here
    page keep their context. Do not confirm a setup write for this read-only check.
@@ -576,3 +580,50 @@ conditions were modified (auto-navigation and Home credential eligibility).
 SetupViewModel's syntactic counts are unchanged: **58 if**, **9 when**, and
 **6 Elvis-return** sites. Screens.kt needs no additional guard because MainActivity
 already omits the credentials callback when the model's eligibility gate is false.
+
+### #32 fix cycle 2 — tribunal round 1 (2026-10-19)
+
+T-001, T-002 and T-003 reproduced before production changes. The ViewModel red run
+reported `18 tests completed, 6 failed`; the two UI regressions reported
+`2 tests completed, 2 failed`. The failures cover continued detection after the
+restart deadline and initial NotFound, excluded help origins (including stop/start),
+Confirm after Back from an actual profile-save failure, immediate-dispatcher poll
+ownership, waiting text after NotFound, and scroll preservation.
+
+The single simplification is to share the existing auto-advance origin rule with
+polling eligibility and guide presentation. Eligible help keeps the 3-second poll;
+other help stays offline. Active polls survive eligible navigation and mark every
+in-flight read as checking. The guide no longer re-keys its column or offers a
+redundant Check again route; Back preserves its origin. Immediate-dispatcher tests
+assert job identity, one probe per interval, and checking during a suspended read.
+The Confirm regression repairs its fake profile store and asserts exactly one
+explicit fake setup write after Back. No real hardware is accessed.
+
+Guard audit against `a760137`: **1 added, 2 removed, net −1** guard sites.
+Added: retain an active poll. Removed: reset-guide retry visibility and the
+checkAfterHelp origin branch. Existing eligibility, auto-navigation, NotFound and
+progress conditions were simplified/updated. The origin predicate moved out of
+auto-navigation and is shared with polling and rendering; no persistent flag or
+timer was added.
+
+Existing English key changed: `reset_wait`. New key: `reset_checking`. No existing
+string key was renamed or removed. Only reset-help and shared reset-wait-copy
+screenshots are re-recorded. The human checks above remain pending.
+
+Full verification, with `ANDROID_HOME=/home/dev/android-sdk`:
+
+```sh
+./gradlew :protocol:test :app:testDebugUnitTest :app:verifyRoborazziDebug :app:lintDebug :app:assembleDebug
+```
+
+Output: `BUILD SUCCESSFUL in 29s`; `60 actionable tasks: 13 executed, 47 up-to-date`.
+JUnit XML: **444 app tests / 29 suites**, **52 protocol tests / 5 suites**;
+**496 tests / 34 suites**, **0 failures, 0 errors, 0 skipped**.
+Roborazzi: **279 comparisons, 279 unchanged, 0 recorded, 0 added, 0 changed**.
+The targeted recording runs covered 36 affected captures; **27 baseline files**
+changed. Light/dark and 200% waiting screenshots were inspected.
+Lint: **0 errors, 20 warnings**. Debug APK assembled.
+The first full run found an omitted 200% baseline and a lifecycle test that expected
+start() to force another probe. That test now asserts the same poll job survives
+and detects intentional release at the next 3-second interval; both follow-ups
+passed in the full command above.
