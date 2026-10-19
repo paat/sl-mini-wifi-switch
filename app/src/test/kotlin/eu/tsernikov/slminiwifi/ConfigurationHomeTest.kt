@@ -1,8 +1,11 @@
 package eu.tsernikov.slminiwifi
 
 import android.os.Bundle
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performScrollTo
 import eu.tsernikov.slminiwifi.ui.HomeScreen
+import eu.tsernikov.slminiwifi.ui.ResetGuideScreen
 import eu.tsernikov.slminiwifi.ui.show
 import android.net.ConnectivityManager
 import android.net.LinkAddress
@@ -634,6 +637,94 @@ class ConfigurationHomeTest {
             assertEquals(Screen.Home, model.screen)
             assertNull(model.writing)
         } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun pollExceptionEndsJobAndOffersCheckAgain() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val shown = androidx.compose.runtime.mutableStateOf(eu.tsernikov.slminiwifi.state.MiniSnapshot(MiniState.Configured))
+        val active = androidx.compose.runtime.mutableStateOf(true)
+        val shownMessage = androidx.compose.runtime.mutableStateOf<Int?>(null)
+        compose.show(false) {
+            HomeScreen(shown.value, isChecking = false, isPolling = active.value, message = shownMessage.value,
+                onRefresh = {}, onConnect = {}, onDetails = {}, onSetupChoice = {}, animateGuides = false)
+        }
+        try {
+            for (target in listOf(MiniState.Configured, MiniState.SetupPending, MiniState.Rebooting)) {
+                store.clear()
+                state = if (target == MiniState.Rebooting) MiniState.Configured else target
+                val model = newModel()
+                model.start()
+                runCurrent()
+                assertTrue(model.polling!!.isActive)
+                if (target == MiniState.Rebooting) {
+                    state = MiniState.Rebooting
+                    advanceTimeBy(3_000)
+                    runCurrent()
+                    assertEquals(MiniState.Rebooting, model.snapshot.state)
+                    assertTrue(model.polling!!.isActive)
+                }
+                model.transportFactory = { _, _ -> throw IOException("poll ended") }
+                advanceTimeBy(3_000)
+                runCurrent()
+                assertEquals(target, model.snapshot.state)
+                assertFalse(model.polling?.isActive == true)
+                assertEquals(R.string.connection_failed, model.message)
+                compose.runOnIdle {
+                    shown.value = model.snapshot
+                    active.value = model.polling?.isActive == true
+                    shownMessage.value = model.message
+                }
+                compose.onNodeWithText("Check again").performScrollTo().assertIsDisplayed()
+                compose.onNodeWithText(application.getString(R.string.connection_failed))
+                    .performScrollTo().assertIsDisplayed()
+                for (text in listOf("Checking your Mini…", "Waiting for the Mini to answer",
+                    application.getString(R.string.checking_help))) {
+                    compose.onNodeWithText(text).assertDoesNotExist()
+                }
+                compose.onNodeWithText("every 3 seconds", substring = true).assertDoesNotExist()
+                model.stop()
+                store.clear()
+            }
+        } finally { store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun missingLocalNetworkPermissionOnResetGuideOffersCheckAgain() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val sdk = android.os.Build.VERSION.SDK_INT
+        val model = newModel()
+        try {
+            org.robolectric.util.ReflectionHelpers.setStaticField(
+                android.os.Build.VERSION::class.java, "SDK_INT", 37)
+            shadowOf(application).denyPermissions(android.Manifest.permission.ACCESS_LOCAL_NETWORK)
+            model.restore(Bundle().apply {
+                putString("screen", Screen.ResetGuide.name)
+                putString("helpReturn", Screen.Home.name)
+                putBoolean("resetHelpAutoDetect", true)
+            })
+            model.start()
+            runCurrent()
+            assertEquals(Screen.ResetGuide, model.screen)
+            assertTrue(model.resetHelpAutoDetect)
+            assertFalse(model.polling?.isActive == true)
+            assertTrue(model.permissionDenied)
+            assertEquals(R.string.permission_needed, model.message)
+            compose.show(false) {
+                ResetGuideScreen({}, animateGuides = false, autoDetect = model.resetHelpAutoDetect,
+                    isPolling = model.polling?.isActive == true, message = model.message,
+                    onRefresh = {}, onPermissions = if (model.permissionDenied) ({}) else null)
+            }
+            compose.onNodeWithText(application.getString(R.string.permission_needed)).assertIsDisplayed()
+            compose.onNodeWithText("Open phone settings").assertIsDisplayed()
+            compose.onNodeWithText("Check again").performScrollTo().assertIsDisplayed()
+            compose.onNodeWithText("every 3 seconds", substring = true).assertDoesNotExist()
+            compose.onNodeWithText("Waiting for the Mini to answer").assertDoesNotExist()
+        } finally {
+            model.stop()
+            store.clear()
+            org.robolectric.util.ReflectionHelpers.setStaticField(
+                android.os.Build.VERSION::class.java, "SDK_INT", sdk)
+            Dispatchers.resetMain()
+        }
     }
 
     private fun newModel() = SetupViewModel(application).also {

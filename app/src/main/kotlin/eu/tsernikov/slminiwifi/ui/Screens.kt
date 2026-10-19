@@ -125,20 +125,25 @@ fun HomeScreen(
         }
         if (state == MiniState.NotFound) onGuide?.let { PrimaryButton(R.string.field_start_here, it) }
         ConnectionFeedback(message, onPermissions, permissionsLabel)
-        if (isChecking || isConnecting || state == MiniState.Rebooting) {
-            if (state == MiniState.Rebooting) RestartIllustration(animateGuides)
-            WaitingProgress(animateGuides)
-            when {
-                isConnecting -> {
-                    Text(stringResource(R.string.connection_waiting))
-                    Text(stringResource(R.string.field_connect_longer))
-                }
-                state == MiniState.Rebooting -> Text(stringResource(R.string.rebooting_help))
-                else -> {
-                    Text(stringResource(R.string.checking))
-                    Text(stringResource(R.string.checking_help))
+        // NotFound keeps Check again in the cable card so its guide layout stays put.
+        val showPollProgress = isPolling && (isChecking || state == MiniState.Rebooting)
+        when {
+            isConnecting || showPollProgress -> {
+                if (state == MiniState.Rebooting) RestartIllustration(animateGuides)
+                WaitingProgress(animateGuides)
+                when {
+                    isConnecting -> {
+                        Text(stringResource(R.string.connection_waiting))
+                        Text(stringResource(R.string.field_connect_longer))
+                    }
+                    state == MiniState.Rebooting -> Text(stringResource(R.string.rebooting_help))
+                    else -> {
+                        Text(stringResource(R.string.checking))
+                        Text(stringResource(R.string.checking_help))
+                    }
                 }
             }
+            !isPolling && state != MiniState.NotFound -> PrimaryButton(R.string.check_again, onRefresh)
         }
         when (state) {
             MiniState.SetupPending -> {

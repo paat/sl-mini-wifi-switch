@@ -154,7 +154,14 @@ class MainActivity : ComponentActivity() {
                             onNext = {
                             if (wifiOffError == WifiOffError.AlreadySetUp) openHelp() else returnHome()
                         })
-                        Screen.ResetGuide -> ResetGuideScreen(onBack = ::closeHelp, autoDetect = resetHelpAutoDetect)
+                        Screen.ResetGuide -> ResetGuideScreen(
+                            onBack = ::closeHelp,
+                            autoDetect = resetHelpAutoDetect,
+                            isPolling = polling?.isActive == true,
+                            message = message,
+                            onRefresh = { requestAccess(PermissionAction.Check) },
+                            onPermissions = openSettings,
+                        )
                         Screen.FieldGuide -> GuideStepScreen(
                             step = guideStep, onBack = ::guideBack, onNext = ::guideNext,
                             onUseWifi = { guideStep = GuideStep.Wifi },

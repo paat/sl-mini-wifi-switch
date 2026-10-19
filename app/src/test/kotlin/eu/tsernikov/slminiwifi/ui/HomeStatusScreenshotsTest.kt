@@ -52,7 +52,7 @@ class HomeStatusScreenshotsTest {
                 BasicServiceSet(ssid = "Mini-Camp", band = 5, authKind = AuthKind.WPA2),
             ))))) else MiniDetails()
         compose.show(dark, fontScale) {
-            HomeScreen(MiniSnapshot(state, details), onRefresh = {}, onConnect = {}, onDetails = {},
+            HomeScreen(MiniSnapshot(state, details), isPolling = true, onRefresh = {}, onConnect = {}, onDetails = {},
                 onSetupChoice = {}, animateGuides = false, onGuide = {}, onHelp = {},
                 onShowCredentials = if (saved) ({}) else null,
                 savedWifiName = if (saved) "Mini-Camp" else null)

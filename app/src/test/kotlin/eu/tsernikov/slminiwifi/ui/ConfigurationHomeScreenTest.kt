@@ -35,7 +35,7 @@ class ConfigurationHomeScreenTest {
         model.savedProfile = eu.tsernikov.slminiwifi.data.Profile("Old Mini", "OldPassword77")
         model.snapshot = MiniSnapshot(MiniState.SetupPending)
         compose.show(false) {
-            HomeScreen(MiniSnapshot(MiniState.SetupPending), onRefresh = {}, onConnect = {},
+            HomeScreen(MiniSnapshot(MiniState.SetupPending), isPolling = true, onRefresh = {}, onConnect = {},
                 onDetails = { details++ }, onSetupChoice = { choice = it }, animateGuides = false,
                 onGuide = {}, onHelp = {},
                 onShowCredentials = if (model.canShowHomeCredentials) model::showSavedPassword else null)
@@ -59,11 +59,38 @@ class ConfigurationHomeScreenTest {
         model.networks.close()
     }
 
-    @Test fun configuredHasNoManualCheck() = noCheck(MiniState.Configured)
-    @Test fun bypassHasNoManualCheck() = noCheck(MiniState.Bypass)
-    @Test fun unknownHasNoManualCheck() = noCheck(MiniState.Unknown)
-    @Test fun setupPendingHasNoManualCheck() = noCheck(MiniState.SetupPending)
-    @Test fun rebootingHasNoManualCheck() = noCheck(MiniState.Rebooting)
+    @Test fun configuredOffersCheckAgainWhenPollingStops() = stopped(MiniState.Configured)
+    @Test fun bypassOffersCheckAgainWhenPollingStops() = stopped(MiniState.Bypass)
+    @Test fun unknownOffersCheckAgainWhenPollingStops() = stopped(MiniState.Unknown)
+    @Test fun setupPendingOffersCheckAgainWhenPollingStops() = stopped(MiniState.SetupPending)
+    @Test fun rebootingOffersCheckAgainWhenPollingStops() = stopped(MiniState.Rebooting)
+
+    @Test fun backgroundPollingShowsNoProgressAndNoCheckAgain() {
+        val state = androidx.compose.runtime.mutableStateOf(MiniState.Configured)
+        compose.show(false) {
+            HomeScreen(MiniSnapshot(state.value), isChecking = false, isPolling = true,
+                onRefresh = {}, onConnect = {}, onDetails = {}, onSetupChoice = {}, animateGuides = false)
+        }
+        for (next in listOf(MiniState.Configured, MiniState.Bypass, MiniState.Unknown, MiniState.SetupPending)) {
+            compose.runOnIdle { state.value = next }
+            compose.onNodeWithText("Check again").assertDoesNotExist()
+            compose.onNodeWithText("Checking your Mini…").assertDoesNotExist()
+            compose.onNodeWithText("Waiting for the Mini to answer").assertDoesNotExist()
+            compose.onNodeWithText("This can take up to 1 minute.").assertDoesNotExist()
+        }
+    }
+
+    @Test fun setupPendingCheckingCopyDoesNotNameCheckAgain() {
+        val help = RuntimeEnvironment.getApplication().getString(R.string.checking_help)
+        assertFalse(help.contains("again", ignoreCase = true))
+        assertEquals("This can take up to 1 minute.", help)
+        compose.show(false) {
+            HomeScreen(MiniSnapshot(MiniState.SetupPending), isChecking = true, isPolling = true,
+                onRefresh = {}, onConnect = {}, onDetails = {}, onSetupChoice = {}, animateGuides = false)
+        }
+        compose.onNodeWithText(help).assertIsDisplayed()
+        compose.onNodeWithText("Check again").assertDoesNotExist()
+    }
 
     @Test fun notFoundHasManualRetryWhenCheckingStopped() = retry(false)
     @Test fun timedOutHasManualRetryWhenCheckingStopped() = retry(true)
@@ -97,23 +124,36 @@ class ConfigurationHomeScreenTest {
 
     @Test fun resetGuideShowsRestartProgressWithoutManualRetry() {
         compose.show(false) {
-            ResetGuideScreen({}, animateGuides = false, autoDetect = true)
+            ResetGuideScreen({}, animateGuides = false, autoDetect = true, isPolling = true)
         }
         compose.onNodeWithText("Waiting for the Mini to answer").assertIsDisplayed()
-        compose.onNodeWithText("This can take up to 1 minute. If it takes longer, try checking again.")
-            .assertDoesNotExist()
+        compose.onNodeWithText("This can take up to 1 minute.").assertDoesNotExist()
         compose.onNodeWithText("Check again").assertDoesNotExist()
     }
 
+    @Test fun permissionMissingOnResetGuideOffersCheckAgain() {
+        var checks = 0
+        compose.show(false) {
+            ResetGuideScreen({}, animateGuides = false, autoDetect = true, isPolling = false,
+                message = R.string.permission_needed, onRefresh = { checks++ }, onPermissions = {})
+        }
+        compose.onNodeWithText("Allow access in the phone settings, then try again.").assertIsDisplayed()
+        compose.onNodeWithText("Open phone settings").assertIsDisplayed()
+        compose.onNodeWithText("Check again").performScrollTo().performClick()
+        assertEquals(1, checks)
+        compose.onNodeWithText("every 3 seconds", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("Waiting for the Mini to answer").assertDoesNotExist()
+    }
+
     @Test fun configuredResetGuideHasNoManualRetryWhileAutoChecking() {
-        compose.show(false) { ResetGuideScreen({}, animateGuides = false, autoDetect = true) }
+        compose.show(false) { ResetGuideScreen({}, animateGuides = false, autoDetect = true, isPolling = true) }
         compose.onNodeWithText("Check again").assertDoesNotExist()
         compose.onNodeWithText("Back").assertIsDisplayed()
     }
 
     @Test fun homeRebootShowsRestartProgressAndRecoveryTime() {
         compose.show(false) {
-            HomeScreen(MiniSnapshot(MiniState.Rebooting), onRefresh = {}, onConnect = {}, onDetails = {},
+            HomeScreen(MiniSnapshot(MiniState.Rebooting), isPolling = true, onRefresh = {}, onConnect = {}, onDetails = {},
                 onSetupChoice = {}, animateGuides = false)
         }
         compose.onNodeWithText("Waiting for your Mini to restart…").assertIsDisplayed()
@@ -125,7 +165,7 @@ class ConfigurationHomeScreenTest {
 
     @Test fun resetGuideKeepsScrollAcrossRestartAndNotFound() {
         val state = androidx.compose.runtime.mutableStateOf(MiniState.Rebooting)
-        compose.show(false) { ResetGuideScreen({}, animateGuides = false, autoDetect = state.value in listOf(MiniState.Rebooting, MiniState.NotFound)) }
+        compose.show(false) { ResetGuideScreen({}, animateGuides = false, autoDetect = state.value in listOf(MiniState.Rebooting, MiniState.NotFound), isPolling = true) }
         compose.onNodeWithText("The Mini is ready to set up when this app says", substring = true)
             .performScrollTo().assertIsDisplayed()
         val scroll = compose.onNode(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(
@@ -141,18 +181,27 @@ class ConfigurationHomeScreenTest {
 
     @Test fun notFoundResetGuideStillShowsWaitingAtTop() {
         compose.show(false) {
-            ResetGuideScreen({}, animateGuides = false, autoDetect = true)
+            ResetGuideScreen({}, animateGuides = false, autoDetect = true, isPolling = true)
         }
         compose.onNodeWithText("Waiting for the Mini to answer").assertIsDisplayed()
         compose.onNodeWithText("Check again").assertDoesNotExist()
     }
 
-    private fun noCheck(state: MiniState) {
+    private fun stopped(state: MiniState) {
+        var checks = 0
         compose.show(false) {
-            HomeScreen(MiniSnapshot(state), onRefresh = {}, onConnect = {}, onDetails = {},
-                onSetupChoice = {}, animateGuides = false, onHelp = {})
+            HomeScreen(MiniSnapshot(state), isPolling = false, message = R.string.connection_failed,
+                onRefresh = { checks++ }, onConnect = {}, onDetails = {}, onSetupChoice = {},
+                animateGuides = false, onHelp = {})
         }
-        compose.onNodeWithText("Check again").assertDoesNotExist()
+        compose.onNodeWithText("We could not join STARLINK. Turn on Wi-Fi and location in your phone settings. Check that the Mini is powered on, then try again or connect a cable.")
+            .performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Check again").performScrollTo().performClick()
+        assertEquals(1, checks)
+        compose.onNodeWithText("Checking your Mini…").assertDoesNotExist()
+        compose.onNodeWithText("Waiting for the Mini to answer").assertDoesNotExist()
+        compose.onNodeWithText("every 3 seconds", substring = true).assertDoesNotExist()
+        compose.onNodeWithText("This can take up to 1 minute.").assertDoesNotExist()
     }
 
     private fun retry(timedOut: Boolean) {
