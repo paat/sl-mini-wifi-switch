@@ -257,7 +257,11 @@ class MainActivityRecoveryTest {
     @Test fun coldQuickLaunchAppliesIdleRuleAfterSavedStateRestoration() {
         for (origin in listOf("FieldGuide", "ResetGuide", "Details", "WifiOffError", "WifiOff", "WifiOnConfirm", "WifiOffResult")) {
             val controller = Robolectric.buildActivity(MainActivity::class.java,
-                SetupLaunch.intent(RuntimeEnvironment.getApplication())).create(Bundle().apply { putString("screen", origin) })
+                SetupLaunch.intent(RuntimeEnvironment.getApplication())).create(Bundle().apply {
+                    putString("screen", origin)
+                    putBoolean("setupLaunchHandled", true)
+                    putString("setupLaunchId", "previous-process-entry")
+                })
             try {
                 val expected = when (origin) {
                     "WifiOff", "WifiOffResult" -> origin
@@ -268,6 +272,19 @@ class MainActivityRecoveryTest {
                 assertNull(controller.get().model.writing)
             } finally { controller.destroy() }
         }
+    }
+
+    @Test fun restoringTheSameQuickIntentAfterProcessDeathKeepsTheGuide() {
+        val intent = SetupLaunch.intent(RuntimeEnvironment.getApplication())
+        val first = Robolectric.buildActivity(MainActivity::class.java, intent).create()
+        first.get().model.openGuide()
+        val saved = Bundle()
+        first.saveInstanceState(saved).destroy()
+        val restored = Robolectric.buildActivity(MainActivity::class.java, android.content.Intent(intent)).create(saved)
+        try {
+            assertEquals(SetupViewModel.Screen.FieldGuide, restored.get().model.screen)
+            assertNull(restored.get().model.writing)
+        } finally { restored.destroy() }
     }
 
     @Test fun coldQuickLaunchKeepsRestoredSavedCredentials() {

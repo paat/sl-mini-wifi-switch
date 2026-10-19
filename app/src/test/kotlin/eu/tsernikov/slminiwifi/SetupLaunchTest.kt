@@ -165,7 +165,8 @@ class SetupLaunchTest {
         assertEquals(SetupLaunch.ACTION, intent.action)
         assertEquals(ComponentName(context, MainActivity::class.java), intent.component)
         assertNull(intent.data)
-        assertFalse(intent.extras?.isEmpty == false)
+        assertEquals(setOf(SetupLaunch.EXTRA_LAUNCH_ID), intent.extras!!.keySet())
+        assertNotNull(intent.getStringExtra(SetupLaunch.EXTRA_LAUNCH_ID))
     }
 
     @Implements(TileService::class)

@@ -113,7 +113,7 @@ The shortcut uses a separate, no-history launcher activity: Android clears the
 static shortcut target task, so this activity forwards an explicit intent into the
 existing app task. Warm and cold quick entry return only idle screens to Home. Editing, confirmation,
 pending permission dialogs, progress, saved-password results and phone-save guidance
-keep their current context. Quick entry never interrupts verification or sends another change. A saved-instance flag records that the initial launch action has been handled; recreation restores the existing flow without redelivering the launch intent. A new intent still runs once through onNewIntent. The Activity does not mutate the system launch intent.
+keep their current context. Quick entry never interrupts verification or sends another change. Each quick entry carries a unique launch ID. Saved instance state records the original launch ID, so recreation with that same intent preserves the flow while a new entry after process death still applies the idle-screen rule. A new intent also runs once through onNewIntent without replacing the original system launch intent.
 
 Home's **Start here** guide explains the physical reset, blinking-then-off light,
 wait, and either cable connection or STARLINK plus Android's Connect dialog. Its

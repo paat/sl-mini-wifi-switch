@@ -169,7 +169,9 @@ class ConnectionLifecycleTest {
                         model.permissionRequest = null
                         model.permissionResult(mapOf(Manifest.permission.NEARBY_WIFI_DEVICES to false))
                     }
-                    compose.onNodeWithText(application.getString(R.string.permission_needed)).performScrollTo().assertIsDisplayed()
+                    compose.onNodeWithText("Android needs permission to find and connect to your Mini. Tap Reconnect to the Mini, or allow access in the phone settings.")
+                        .performScrollTo().assertIsDisplayed()
+                    compose.onNodeWithText(application.getString(R.string.permission_needed)).assertDoesNotExist()
                     compose.onNodeWithText("Open phone settings").performScrollTo().performClick()
                     scenario.onActivity {
                         val settings = shadowOf(it).nextStartedActivity

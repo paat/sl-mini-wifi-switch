@@ -196,7 +196,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                 permissionDenied = false
                 message = null
             }
-            if (!requestingWifi && (screen == Screen.WifiOff || screen == Screen.WifiOnConfirm || screen == Screen.WifiOn)) {
+            if (connecting?.isActive != true && (screen == Screen.WifiOff || screen == Screen.WifiOnConfirm || screen == Screen.WifiOn)) {
                 reacquireConfirmation()
             } else startPolling(showProgress = true)
         } else message = R.string.no_network_permission
@@ -321,7 +321,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
             reacquireConfirmation()
             return
         }
-        val missing = if (confirmationIsWifi) wifiPermissions(PermissionAction.Connect).filterNot(::granted) else emptyList()
+        val missing = missingPermissions(PermissionAction.SecureWifi)
         if (missing.isNotEmpty()) {
             pendingPermissionAction = PermissionAction.SecureWifi
             awaitingPermissionResult = true
@@ -496,8 +496,9 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     private fun missingPermissions(action: PermissionAction): List<String> = buildList {
         if (!hasLocalAccess()) add(Manifest.permission.ACCESS_LOCAL_NETWORK)
         // Reconnect reads Ethernet first. Ask for Wi-Fi permission only on the Connect fallback.
-        if (action != PermissionAction.Reconnect &&
-            (action == PermissionAction.Connect || networks.findAvailable() == null)) addAll(wifiPermissions(action))
+        if (action == PermissionAction.Connect ||
+            (action == PermissionAction.SecureWifi && confirmationIsWifi) ||
+            (action == PermissionAction.Check && networks.findAvailable() == null)) addAll(wifiPermissions(action))
     }.distinct().filterNot(::granted)
 
     fun requestAccess(action: PermissionAction) {
@@ -531,8 +532,11 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                 message = R.string.connection_failed
             } finally {
                 requestingWifi = false
-                if (foreground) start()
             }
+            // Hand the completed request back to start() for a fresh confirmation read.
+            // Cancellation exits before this handoff, leaving any replacement job owned.
+            connecting = null
+            if (foreground) start()
         }
     }
 
@@ -606,6 +610,8 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                     confirmedConnection = connection
                     confirmedInterface = networks.interfaceName(connection)
                     confirmationIsWifi = !networks.isEthernet(connection)
+                    permissionDenied = permissionDenied && missingPermissions(PermissionAction.SecureWifi).isNotEmpty()
+                    message = if (permissionDenied) R.string.permission_needed else null
                 } else if (connection == null && requestWifiIfMissing) {
                     requestAccess(PermissionAction.Connect)
                 }

@@ -155,6 +155,140 @@ class SetupViewModelNetworkTest {
         } finally { kotlinx.coroutines.Dispatchers.resetMain() }
     }
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun resumeDuringReconnectProbeKeepsTheWifiFallback() = runTest {
+        kotlinx.coroutines.Dispatchers.setMain(kotlinx.coroutines.test.StandardTestDispatcher(testScheduler))
+        shadowOf(application).grantPermissions(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+        try {
+            for (screen in listOf(SetupViewModel.Screen.WifiOn, SetupViewModel.Screen.WifiOnConfirm,
+                SetupViewModel.Screen.WifiOff)) {
+                addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
+                val probe = kotlinx.coroutines.CompletableDeferred<Unit>()
+                model.screen = screen
+                model.transportFactory = { _, _ -> object : Transport {
+                    override suspend fun post(url: String, headers: Map<String, String>, body: ByteArray): HttpResponse {
+                        probe.await()
+                        return ReadOnlyTransport(unreachable = true).post(url, headers, body)
+                    }
+                } }
+                model.requestAccess(SetupViewModel.PermissionAction.Reconnect)
+                testScheduler.runCurrent()
+                val reconnect = model.connecting
+                assertTrue(reconnect!!.isActive)
+                model.stop()
+                model.start()
+                testScheduler.runCurrent()
+                assertSame("Resume must retain the user's Reconnect on $screen", reconnect, model.connecting)
+                probe.complete(Unit)
+                testScheduler.runCurrent()
+                assertEquals("Reconnect must reach Android's Connect dialog on $screen", 1, connectivity.networkCallbacks.size)
+                assertTrue(model.requestingWifi)
+                val request = connectivity.networkCallbacks.single()
+                manager.unregisterNetworkCallback(request)
+                request.onUnavailable()
+                testScheduler.runCurrent()
+                assertFalse(model.requestingWifi)
+                org.junit.Assert.assertNull(model.writing)
+                model.stop()
+                model.releaseConnection()
+            }
+        } finally { kotlinx.coroutines.Dispatchers.resetMain() }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun successfulCableReadClearsFailedReconnectFeedback() = cableRecovery(denied = false)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun successfulCableReconnectClearsDeniedWifiFeedback() = cableRecovery(denied = true)
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun cableRecovery(denied: Boolean) = runTest {
+        kotlinx.coroutines.Dispatchers.setMain(kotlinx.coroutines.test.StandardTestDispatcher(testScheduler))
+        try {
+            for (screen in listOf(SetupViewModel.Screen.WifiOff, SetupViewModel.Screen.WifiOnConfirm)) {
+                connectivity.clearAllNetworks()
+                model.screen = screen
+                model.confirmedConnection = null
+                model.confirmationIsWifi = true
+                shadowOf(application).grantPermissions(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+                model.requestAccess(SetupViewModel.PermissionAction.Reconnect)
+                testScheduler.runCurrent()
+                val request = connectivity.networkCallbacks.single()
+                manager.unregisterNetworkCallback(request)
+                request.onUnavailable()
+                testScheduler.runCurrent()
+                assertEquals(R.string.connection_failed, model.message)
+                if (denied) {
+                    shadowOf(application).denyPermissions(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+                    model.requestAccess(SetupViewModel.PermissionAction.Reconnect)
+                    testScheduler.runCurrent()
+                    model.permissionRequest = null
+                    model.permissionResult(mapOf(android.Manifest.permission.NEARBY_WIFI_DEVICES to false))
+                    assertTrue(model.permissionDenied)
+                    assertEquals(R.string.permission_needed, model.message)
+                }
+                val cable = addNetwork(2, NetworkCapabilities.TRANSPORT_ETHERNET)
+                model.transportFactory = { _, _ -> ReadOnlyTransport() }
+                // Both lifecycle re-reads and an explicit Reconnect must retire old failures.
+                if (denied) model.requestAccess(SetupViewModel.PermissionAction.Reconnect) else model.start()
+                testScheduler.runCurrent()
+                assertEquals(cable, model.confirmedConnection?.network)
+                assertTrue(model.canConfirm)
+                org.junit.Assert.assertNull(model.message)
+                assertFalse(model.permissionDenied)
+                assertEquals(screen, model.screen)
+                org.junit.Assert.assertNull(model.writing)
+                model.stop()
+                model.releaseConnection()
+            }
+        } finally { kotlinx.coroutines.Dispatchers.resetMain() }
+    }
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test fun resumeKeepsSecureWifiPermissionDenialOnRetainedRequestedNetwork() = runTest {
+        kotlinx.coroutines.Dispatchers.setMain(kotlinx.coroutines.test.StandardTestDispatcher(testScheduler))
+        try {
+            shadowOf(application).grantPermissions(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+            model.transportFactory = { _, _ -> ReadOnlyTransport() }
+            model.requestAccess(SetupViewModel.PermissionAction.Connect)
+            testScheduler.runCurrent()
+            val request = connectivity.networkCallbacks.single()
+            // A redacted SSID is still discoverable through the retained app-owned request.
+            val wifi = addNetwork(1, NetworkCapabilities.TRANSPORT_WIFI)
+            val properties = manager.getLinkProperties(wifi)!!.apply {
+                dhcpServerAddress = InetAddress.getByName("192.168.1.1") as java.net.Inet4Address
+            }
+            connectivity.setLinkProperties(wifi, properties)
+            request.onAvailable(wifi)
+            request.onLinkPropertiesChanged(wifi, properties)
+            testScheduler.runCurrent()
+            model.screen = SetupViewModel.Screen.WifiOnConfirm
+            model.profile = Profile("TypedName", "TypedPassword77")
+            model.start()
+            testScheduler.runCurrent()
+            assertTrue(model.canConfirm)
+            shadowOf(application).denyPermissions(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+            model.confirmWifiOn()
+            assertEquals(listOf(android.Manifest.permission.NEARBY_WIFI_DEVICES), model.permissionRequest)
+            model.permissionRequest = null
+            model.permissionResult(mapOf(android.Manifest.permission.NEARBY_WIFI_DEVICES to false))
+            model.stop()
+            model.start()
+            testScheduler.runCurrent()
+            assertTrue(model.permissionDenied)
+            assertEquals(R.string.permission_needed, model.message)
+            assertEquals(wifi, model.confirmedConnection?.network)
+            org.junit.Assert.assertNull(model.writing)
+            shadowOf(application).grantPermissions(android.Manifest.permission.NEARBY_WIFI_DEVICES)
+            model.stop()
+            model.start()
+            testScheduler.runCurrent()
+            assertFalse(model.permissionDenied)
+            org.junit.Assert.assertNull(model.message)
+            org.junit.Assert.assertNull(model.writing)
+        } finally { kotlinx.coroutines.Dispatchers.resetMain() }
+    }
+
     @Test fun failedEthernetProbesFallThroughToAvailableStarlinkWifi() = runTest {
         val ethernet = addNetwork(1, NetworkCapabilities.TRANSPORT_ETHERNET)
         val wifi = addNetwork(2, NetworkCapabilities.TRANSPORT_WIFI, "STARLINK")

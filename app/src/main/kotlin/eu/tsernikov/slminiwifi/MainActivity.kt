@@ -51,7 +51,10 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         model = ViewModelProvider(this)[SetupViewModel::class.java]
         model.restore(savedInstanceState)
-        if (savedInstanceState?.getBoolean("setupLaunchHandled") != true) handleSetupLaunch(intent)
+        if (savedInstanceState == null ||
+            savedInstanceState.getString(SetupLaunch.EXTRA_LAUNCH_ID) != intent.getStringExtra(SetupLaunch.EXTRA_LAUNCH_ID)) {
+            handleSetupLaunch(intent)
+        }
         autoConnect = AndroidWifiAutoConnect(this, model::releaseConnection) { saveNetwork.launch(it) }
         enableEdgeToEdge()
         setContent {
@@ -171,7 +174,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        setIntent(intent)
+        // Keep the original launch identity: Android restores that intent on recreation.
         handleSetupLaunch(intent)
     }
 
@@ -193,7 +196,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         model.saveState(outState)
-        outState.putBoolean("setupLaunchHandled", true)
+        outState.putString(SetupLaunch.EXTRA_LAUNCH_ID, intent.getStringExtra(SetupLaunch.EXTRA_LAUNCH_ID))
         super.onSaveInstanceState(outState)
     }
 }

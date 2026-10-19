@@ -85,6 +85,14 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Consume quick entry once across real ActivityScenario recreation, including a preserved system launch intent
 - [x] Re-read Ethernet before requesting Wi-Fi from Reconnect; regression tests for all four cases
 
+## PR #28 tribunal cycle 1 (#19)
+
+- [x] Distinguish a new cold quick entry from restoration of the same intent (T-001)
+- [x] Keep an active Reconnect probe and its Wi-Fi fallback across stop/start (T-002)
+- [x] Clear old connection failures and unneeded Wi-Fi permission feedback after a successful cable read (T-003)
+- [x] Share SecureWifi permission requirements between confirmation and resume (T-004)
+- [x] Use Reconnect wording on editing and confirmation screens, retaining Check again on Home (T-005)
+
 ## M5: Release
 
 - [ ] Acceptance test with at least three non-technical people (UX.md); fix every hesitation found
