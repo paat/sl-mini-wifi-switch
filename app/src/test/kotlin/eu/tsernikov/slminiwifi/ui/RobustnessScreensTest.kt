@@ -37,20 +37,28 @@ class RobustnessScreensTest {
             BasicServiceSet(ssid = "Mini-Camp", authKind = AuthKind.WPA2_WPA3),
         )))))
 
-    @Test fun savedPasswordEntryAvailableInEveryHomeState() {
-        val state = mutableStateOf(MiniState.Configured)
+    @Test fun savedPasswordEntryAvailableExceptOnSetupPendingHome() {
+        val model = eu.tsernikov.slminiwifi.SetupViewModel(org.robolectric.RuntimeEnvironment.getApplication())
+        model.savedProfile = Profile("Mini-Camp", "Camp7River9Sunny2")
         var opens = 0
         compose.setContent {
             MiniTheme {
-                HomeScreen(MiniSnapshot(state.value, savedDetails), onRefresh = {}, onConnect = {}, onDetails = {},
-                    onSetupChoice = {}, animateGuides = false, onShowCredentials = { opens++ }, savedWifiName = "Mini-Camp")
+                HomeScreen(model.snapshot, onRefresh = {}, onConnect = {}, onDetails = {},
+                    onSetupChoice = {}, animateGuides = false,
+                    onShowCredentials = if (model.canShowHomeCredentials) ({ opens++ }) else null,
+                    savedWifiName = model.savedProfile?.name)
             }
         }
         MiniState.entries.forEach { current ->
-            compose.runOnIdle { state.value = current }
-            compose.onNodeWithText("Show my Wi-Fi password").performScrollTo().assertIsDisplayed().performClick()
+            compose.runOnIdle { model.snapshot = MiniSnapshot(current, savedDetails) }
+            if (current == MiniState.SetupPending) {
+                compose.onNodeWithText("Show my Wi-Fi password").assertDoesNotExist()
+            } else {
+                compose.onNodeWithText("Show my Wi-Fi password").performScrollTo().assertIsDisplayed().performClick()
+            }
         }
-        assertEquals(MiniState.entries.size, opens)
+        assertEquals(MiniState.entries.size - 1, opens)
+        model.networks.close()
     }
 
     @Test fun savedPasswordHomeEntryReachesPasswordAndQrInEveryPostSetupState() {

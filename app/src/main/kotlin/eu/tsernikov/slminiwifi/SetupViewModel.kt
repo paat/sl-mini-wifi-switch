@@ -576,7 +576,7 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
     val canShowHomeCredentials: Boolean
         get() {
             val saved = savedProfile ?: return false
-            if (snapshot.state != MiniState.Configured) return true
+            if (snapshot.state != MiniState.Configured) return snapshot.state != MiniState.SetupPending
             val matching = snapshot.details.config?.networks.orEmpty()
                 .flatMap { it.basicServiceSets }.filter { it.ssid == saved.name && it.ssid.isNotBlank() }
             return matching.isNotEmpty() && matching.all { it.authKind != null && it.authKind != AuthKind.OPEN }
@@ -697,10 +697,15 @@ internal class SetupViewModel(application: Application) : AndroidViewModel(appli
                             ?: (null to detector.probeTimedOut())
                     }
                     detectedConnection = detected.first
+                    val previousState = snapshot.state
                     snapshot = detected.second
                     rememberDetails(snapshot)
                     checking = false
-                    if (snapshot.state == MiniState.SetupPending) screen = Screen.Home
+                    if (previousState != MiniState.SetupPending && snapshot.state == MiniState.SetupPending &&
+                        (screen == Screen.Home || (screen == Screen.ResetGuide &&
+                            (helpReturn == Screen.Home ||
+                                (helpReturn == Screen.WifiOffError && wifiOffError == WifiOffError.AlreadySetUp) ||
+                                (helpReturn == Screen.WifiOnResult && wifiVerified))))) screen = Screen.Home
                     if (snapshot.state == MiniState.NotFound) break
                     delay(minOf(MiniStateDetector.POLL_INTERVAL_MILLIS,
                         detector.rebootTimeRemainingMillis ?: MiniStateDetector.POLL_INTERVAL_MILLIS))

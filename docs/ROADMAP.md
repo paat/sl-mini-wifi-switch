@@ -106,6 +106,7 @@ Tick tasks as they land. Each milestone ends in a working build; see the definit
 - [x] Foreground read-only polling on Home and Reset help; automatic return to setup choices after reset
 - [x] Restart progress and stopped-check retry only; updated guide wording and icon description
 - [x] Fake-transport reset sequence, lifecycle/navigation regression tests and affected Roborazzi baselines
+- [x] Review cycle 1: transition-only reset-help navigation with origin preservation; hide stale saved credentials on SetupPending Home
 - [ ] Human reset/reconnect and TalkBack checks (TESTING.md #32)
 
 ## M5: Release

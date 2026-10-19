@@ -99,7 +99,7 @@ API 30+ uses `ACTION_WIFI_ADD_NETWORKS` with a WPA2 suggestion; API 29 submits a
 network suggestion and explains Android's approval notification. Saved, already
 present, declined and unavailable results have separate messages. Saving a network
 allows Android to auto-connect; the app does not claim that saving proves a connection.
-Configured Home shows Wi-Fi on/off, names, and password availability directly. It summarizes matching radio states and shows individual bands only when their states differ. Open networks say “No password”; secured networks explain that the Mini hides the password. **Show my Wi-Fi password** opens the existing saved-profile result only for a matching secured Wi-Fi name. Other Home states retain saved-profile recovery, including after Done, Back, or a fresh launch. It opens the name/password/QR result and Join on this phone without claiming the Mini applied the saved profile. Details keeps the last successful fields and refreshes config/dish fields from verification reads.
+Configured Home shows Wi-Fi on/off, names, and password availability directly. It summarizes matching radio states and shows individual bands only when their states differ. Open networks say “No password”; secured networks explain that the Mini hides the password. **Show my Wi-Fi password** opens the existing saved-profile result only for a matching secured Wi-Fi name. Other Home states except SetupPending retain saved-profile recovery, including after Done, Back, or a fresh launch. The recovery action opens the name/password/QR result and Join on this phone without claiming the Mini applied the saved profile. SetupPending Home hides saved credentials because a reset makes them stale. Details keeps the last successful fields and refreshes config/dish fields from verification reads.
 Only the existing local endpoint allowlist is used. If verification is interrupted,
 reconnect guidance can reveal the encrypted saved credentials and QR without claiming
 the Mini applied them. An encryption/storage failure prevents the write entirely.
@@ -124,7 +124,11 @@ It explains that reset removes the saved Wi-Fi name/password. Home and Reset hel
 poll read-only every 3 seconds while foregrounded. The screen setter applies the
 same polling eligibility gate as start(), and stop() cancels it. Every other screen,
 including all Start here pages, editing, confirmations and writes, cancels Home polling.
-SetupPending automatically opens Home from Reset help; no tap or write is involved.
+A transition from a non-SetupPending observation into SetupPending automatically opens
+Home from Reset help opened from Home, an AlreadySetUp error, or a verified Wi-Fi
+result; no tap or write is involved. Repeated SetupPending observations leave the
+guide open. Help opened from password editing or an unverified result preserves
+that origin and its credentials even across a readiness transition.
 Rebooting keeps visible progress for the existing three-minute deadline, including
 across stop/start. NotFound ends polling and offers Check again; other states have
 no manual retry. Reset help's Back preserves its origin, including saved credentials;

@@ -533,3 +533,46 @@ A docs/screenshots/m4/reset_waiting_dark_font_200.png
 A docs/screenshots/m4/reset_waiting_light.png
 A docs/screenshots/m4/reset_waiting_light_font_200.png
 ```
+
+
+### #32 fix cycle 1 (2026-10-19)
+
+Both review findings reproduced before the fix. The focused regression run reported
+`50 tests completed, 6 failed`: repeated SetupPending reads dismissed Reset help,
+help lost the save-failure draft/unverified-result origin, and SetupPending Home
+exposed stale credentials. The two Compose cases also failed when wired through
+`canShowHomeCredentials`, matching MainActivity's actual callback gate.
+
+The poll handler now compares its previous observation with the new state and
+only auto-navigates on entry into SetupPending from Home or eligible Reset help
+(Home, AlreadySetUp error, or verified Wi-Fi result origin). Help from editing or
+an unverified result stays open and Back retains its draft/credentials. No timer
+or persistent flag was added. The existing Home credential gate excludes
+SetupPending; Configured matching-name/authentication behavior is unchanged.
+
+Regression coverage includes Configured → silence → SetupPending, several polls
+while already pending, actual profile-save failure followed by reset help and Back,
+unverified-result preservation across a readiness transition, eligible setup-done
+origins, and hidden stale credentials in both the model and composed Home. Existing
+navigation/cancellation tests cover editing, confirmation, writing and results.
+The focused post-fix run passed **51 tests / 4 suites**.
+
+Full command, with `ANDROID_HOME=/home/dev/android-sdk`:
+
+```sh
+./gradlew :protocol:test :app:testDebugUnitTest :app:verifyRoborazziDebug :app:lintDebug :app:assembleDebug
+```
+
+Output: `BUILD SUCCESSFUL in 29s`; `60 actionable tasks: 13 executed, 47 up-to-date`.
+JUnit XML: **439 app tests / 29 suites**, **52 protocol tests / 5 suites**;
+**491 tests / 34 suites**, **0 failures, 0 errors, 0 skipped**.
+Roborazzi: **279 comparisons, 279 unchanged, 0 recorded, 0 added, 0 changed**.
+No screenshot baseline was affected or re-recorded. Lint: **0 errors, 20 warnings**.
+Debug APK assembled. No hardware requests were made; the existing human #32 checks
+remain pending.
+
+Guard audit against `66fb3d8`: **0 added, 0 removed, net 0** guard sites; two existing
+conditions were modified (auto-navigation and Home credential eligibility).
+SetupViewModel's syntactic counts are unchanged: **58 if**, **9 when**, and
+**6 Elvis-return** sites. Screens.kt needs no additional guard because MainActivity
+already omits the credentials callback when the model's eligibility gate is false.

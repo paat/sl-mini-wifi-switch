@@ -38,6 +38,14 @@ class SetupViewModelHomeStatusTest {
 
     @After fun tearDown() = store.clear()
 
+    @Test fun setupPendingHomeCannotOpenStaleSavedCredentials() {
+        model.snapshot = MiniSnapshot(MiniState.SetupPending, MiniDetails(config = config()))
+        assertFalse(model.canShowHomeCredentials)
+        model.showSavedPassword()
+        assertEquals(SetupViewModel.Screen.Home, model.screen)
+        assertFalse(model.profileSaved)
+    }
+
     @Test fun configuredHomeRefusesSavedPasswordForAnotherWifiName() {
         configured(config(name = "Another-Mini"))
         assertFalse(model.canShowHomeCredentials)

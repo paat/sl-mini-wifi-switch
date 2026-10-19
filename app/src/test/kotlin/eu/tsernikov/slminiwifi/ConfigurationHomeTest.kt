@@ -7,6 +7,10 @@ import android.net.NetworkCapabilities
 import android.net.NetworkInfo
 import androidx.lifecycle.ViewModelStore
 import eu.tsernikov.slminiwifi.SetupViewModel.Screen
+import eu.tsernikov.slminiwifi.data.Profile
+import eu.tsernikov.slminiwifi.data.ProfileBlob
+import eu.tsernikov.slminiwifi.data.ProfileCipher
+import eu.tsernikov.slminiwifi.data.ProfileStore
 import eu.tsernikov.slminiwifi.protocol.Frames
 import eu.tsernikov.slminiwifi.protocol.HttpResponse
 import eu.tsernikov.slminiwifi.protocol.Requests
@@ -77,6 +81,121 @@ class ConfigurationHomeTest {
             assertTrue(model.polling!!.isActive)
             assertNotNull(model.detectedConnection)
             assertNull(model.writing)
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun alreadyPendingResetGuideStaysOpenAcrossSeveralPolls() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            state = MiniState.SetupPending
+            model.start()
+            runCurrent()
+            model.openHelp()
+            val initialReads = reads
+            runCurrent()
+            repeat(3) {
+                advanceTimeBy(3_000)
+                runCurrent()
+                assertEquals(Screen.ResetGuide, model.screen)
+            }
+            assertTrue(reads > initialReads)
+            model.closeHelp()
+            assertEquals(Screen.Home, model.screen)
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun saveFailureResetHelpKeepsDraftEvenAcrossAReadinessTransition() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            state = MiniState.SetupPending
+            model.start()
+            runCurrent()
+            model.openWifiOn()
+            val draft = Profile("My field Mini", "MyDraftPassword77")
+            model.profile = draft
+            model.profiles = ProfileStore(object : ProfileCipher {
+                override fun encrypt(plaintext: ByteArray): ByteArray = throw IOException("Storage unavailable")
+                override fun decrypt(ciphertext: ByteArray): ByteArray = error("Unused")
+            }, object : ProfileBlob {
+                override fun read(): ByteArray? = null
+                override fun write(ciphertext: ByteArray) = error("Encryption must fail first")
+            })
+            model.screen = Screen.WifiOnConfirm
+            model.confirmWifiOn()
+            model.writing!!.join()
+            assertEquals(Screen.WifiOn, model.screen)
+            assertEquals(R.string.wifi_on_store_before_setup_failed, model.profileError)
+            model.openHelp()
+            runCurrent()
+            repeat(3) {
+                advanceTimeBy(3_000)
+                runCurrent()
+                assertEquals(Screen.ResetGuide, model.screen)
+            }
+            state = MiniState.Rebooting
+            advanceTimeBy(3_000)
+            runCurrent()
+            state = MiniState.SetupPending
+            advanceTimeBy(3_000)
+            runCurrent()
+            assertEquals(Screen.ResetGuide, model.screen)
+            model.closeHelp()
+            assertEquals(Screen.WifiOn, model.screen)
+            assertSame(draft, model.profile)
+            assertEquals(R.string.wifi_on_store_before_setup_failed, model.profileError)
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun unverifiedResultResetHelpKeepsCredentialsAcrossAReadinessTransition() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            model.start()
+            runCurrent()
+            val saved = Profile("Saved Mini", "SavedPassword77")
+            model.savedProfile = saved
+            model.screen = Screen.WifiOffError
+            model.showSavedPassword()
+            model.openHelp()
+            runCurrent()
+            state = MiniState.SetupPending
+            repeat(3) {
+                advanceTimeBy(3_000)
+                runCurrent()
+                assertEquals(Screen.ResetGuide, model.screen)
+            }
+            model.closeHelp()
+            assertEquals(Screen.WifiOnResult, model.screen)
+            assertSame(saved, model.profile)
+            assertFalse(model.wifiVerified)
+        } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
+    }
+
+    @Test fun resetGuideFromCompletedSetupCanAdvanceOnReadinessTransition() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val model = newModel()
+        try {
+            for (origin in listOf(Screen.WifiOffError, Screen.WifiOnResult)) {
+                state = MiniState.Configured
+                model.returnHome()
+                model.start()
+                runCurrent()
+                model.screen = origin
+                model.wifiOffError = eu.tsernikov.slminiwifi.state.WifiOffError.AlreadySetUp
+                model.wifiVerified = true
+                model.openHelp()
+                runCurrent()
+                state = MiniState.Rebooting
+                advanceTimeBy(3_000)
+                runCurrent()
+                state = MiniState.SetupPending
+                advanceTimeBy(3_000)
+                runCurrent()
+                assertEquals(Screen.Home, model.screen)
+                assertNull(model.writing)
+            }
         } finally { model.stop(); store.clear(); Dispatchers.resetMain() }
     }
 

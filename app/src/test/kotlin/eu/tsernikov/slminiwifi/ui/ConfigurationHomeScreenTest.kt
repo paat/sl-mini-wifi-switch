@@ -31,10 +31,14 @@ class ConfigurationHomeScreenTest {
     @Test fun readyHomeExplainsBothChoicesAndOnlyOffersSetupAndDetails() {
         var choice: Boolean? = null
         var details = 0
+        val model = eu.tsernikov.slminiwifi.SetupViewModel(RuntimeEnvironment.getApplication())
+        model.savedProfile = eu.tsernikov.slminiwifi.data.Profile("Old Mini", "OldPassword77")
+        model.snapshot = MiniSnapshot(MiniState.SetupPending)
         compose.show(false) {
             HomeScreen(MiniSnapshot(MiniState.SetupPending), onRefresh = {}, onConnect = {},
                 onDetails = { details++ }, onSetupChoice = { choice = it }, animateGuides = false,
-                onGuide = {}, onHelp = {})
+                onGuide = {}, onHelp = {},
+                onShowCredentials = if (model.canShowHomeCredentials) model::showSavedPassword else null)
         }
         compose.onNodeWithText("Ready to set up").assertIsDisplayed()
         compose.onNodeWithText("Your Mini has been reset. Choose how it should work.").assertIsDisplayed()
@@ -42,7 +46,7 @@ class ConfigurationHomeScreenTest {
         compose.onNodeWithText("Cable only. No Wi-Fi from the Mini.").assertIsDisplayed()
         compose.onNodeWithText("Your own Wi-Fi name and password.").assertIsDisplayed()
         compose.onAllNodes(hasClickAction()).assertCountEquals(3)
-        for (label in listOf("Check again", "Reset help", "Start here",
+        for (label in listOf("Check again", "Reset help", "Start here", "Show my Wi-Fi password",
             "Checking your Mini does not change its settings.")) {
             compose.onNodeWithText(label).assertDoesNotExist()
         }
@@ -52,6 +56,7 @@ class ConfigurationHomeScreenTest {
         assertEquals(false, choice)
         compose.onNodeWithText("Details").assertHeightIsAtLeast(48.dp).performClick()
         assertEquals(1, details)
+        model.networks.close()
     }
 
     @Test fun configuredHasNoManualCheck() = noCheck(MiniState.Configured)
