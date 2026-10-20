@@ -3,10 +3,10 @@
     <string name="read_only_note">Mini kontrollimine ei muuda selle seadeid.</string>
     <string name="ready_title">Seadistamiseks valmis</string>
     <string name="wifi_off_choice_body">Kaabliga, ilma Wi-Fi-ta.</string>
-    <string name="wifi_secure_choice_body">Vali nimi ja parool.</string>
+    <string name="wifi_secure_choice_body">Sinu enda Wi-Fi nimi ja parool.</string>
     <string name="ready_body">Mini on lähtestatud. Vali, kuidas seda kasutada.</string>
     <string name="wifi_off">Wi-Fi väljas</string>
-    <string name="wifi_secure">Parooliga Wi-Fi</string>
+    <string name="wifi_secure">Wi-Fi sees, parooliga</string>
     <string name="configured_title">Mini on juba seadistatud</string>
     <string name="configured_body">Siin on Mini praegused Wi-Fi seaded.</string>
     <string name="bypass_title">Mini Wi-Fi on väljas</string>
@@ -67,7 +67,7 @@
     <string name="details_direct_note">Kui Wi-Fi on väljas, saab ühe telefoni või sülearvuti ühendada otse kaabliga. See saab Starlinkilt internetiaadressi. Nii saab korraga ühendada ainult ühe seadme.</string>
     <string name="wifi_off_confirm_title">Kas lülitada Wi-Fi välja?</string>
     <string name="wifi_off_confirm_body">Minil ei ole enam Wi-Fi võrku ega oma kohalikku võrku. Selle kaabel peab olema ühendatud ruuteriga.</string>
-    <string name="wifi_off_undo">Wi-Fi sisselülitamiseks lähtesta Mini. Seejärel vali selles rakenduses „Parooliga Wi-Fi“. Varu umbes 3 minutit.</string>
+    <string name="wifi_off_undo">Wi-Fi sisselülitamiseks lähtesta Mini. Seejärel vali selles rakenduses „Wi-Fi sees, parooliga“. Varu umbes 3 minutit.</string>
     <string name="wifi_off_disconnect_warning">Telefoni Wi-Fi ühendus Miniga katkeb. See on ootuspärane.</string>
     <string name="setup_reconnect">Ühenda Miniga uuesti</string>
     <string name="confirm_checking">Kontrollime ühendust enne kinnitamist. Tavaliselt kulub alla minuti. Muudatust pole saadetud. Kui Mini ei vasta, aitame uuesti ühendada.</string>
@@ -100,7 +100,7 @@
     <string name="reset_light">Tuli vilgub kiiresti ja kustub. Lase nupp lahti. Oota umbes 2 minutit, kuni ilmub STARLINK Wi-Fi võrk.</string>
     <string name="reset_wait">Varu kokku umbes 3 minutit. Kui STARLINK ei ilmu, kontrolli toidet ja ühenda kaabel.</string>
     <string name="reset_checking">Kontrollime iga 3 sekundi järel, kuni see juhis on avatud. Pärast lähtestamist näitame „Seadistamiseks valmis“, kui Mini vastab.</string>
-    <string name="reset_ready">Mini on valmis, kui rakendus näitab „Seadistamiseks valmis“. Wi-Fi sisselülitamiseks vali „Parooliga Wi-Fi“.</string>
+    <string name="reset_ready">Mini on valmis, kui rakendus näitab „Seadistamiseks valmis“. Wi-Fi sisselülitamiseks vali „Wi-Fi sees, parooliga“.</string>
     <string name="wifi_on_name">Wi-Fi nimi</string>
     <string name="wifi_on_password">Parool</string>
     <string name="wifi_on_name_rule">Nimi: sisesta vähemalt %1$d märk. Kasuta kuni %2$d inglise tähte, numbrit või tühikut. Muude tähtede ja sümbolite korral võib olla vaja lühemat nime.</string>
@@ -115,7 +115,7 @@
     <string name="wifi_on_generate_password">Loo mulle parool</string>
     <string name="wifi_on_show_password">Näita parooli</string>
     <string name="wifi_on_hide_password">Peida parool</string>
-    <string name="wifi_on_use_saved">Kasuta eelmist Wi-Fi võrku</string>
+    <string name="wifi_on_use_saved">Kasuta sama Wi-Fi-d mis eelmine kord</string>
     <string name="wifi_on_review">Vaata valik üle</string>
     <string name="wifi_on_confirm_title">Kas lülitada parooliga Wi-Fi sisse?</string>
     <string name="wifi_on_confirm_body">Mini hakkab kasutama seda Wi-Fi nime ja sinu valitud parooli. Liitumiseks vajavad seadmed seda parooli.</string>
@@ -169,7 +169,7 @@
     <string name="field_android_body">Vajuta all „Liitu STARLINKiga“. Androidi teates vali STARLINK ja vajuta „Ühenda“.</string>
     <string name="field_android_manual">Juba liitunud? Kontrollimiseks vajuta „Edasi“.</string>
     <string name="field_check_title">Kontrolli ja vali</string>
-    <string name="field_check_body">Kontrollime Mini. Kui näed „Seadistamiseks valmis“, vali „Wi-Fi väljas“ või „Parooliga Wi-Fi“.</string>
+    <string name="field_check_body">Kontrollime Mini. Kui näed „Seadistamiseks valmis“, vali „Wi-Fi väljas“ või „Wi-Fi sees, parooliga“.</string>
     <string name="field_check_next">Kontrolli Mini</string>
     <string name="field_restart_description">Mini ja ringikujuline nool: taaskäivitumine. Ära lülita Mini käivitumise ajal välja.</string>
     <string name="field_restart_caption">Ära lülita Mini välja</string>

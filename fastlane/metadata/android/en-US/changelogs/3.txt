@@ -1,0 +1,1 @@
+Simpler start: after a reset the app shows "Ready to set up" with two clear choices, and notices by itself when a reset has finished. The app is now available in Estonian. Clearer messages and a Check again button when checking stops. Fixes for messages after leaving a screen. Still not tried on a real Mini; report problems on GitHub.

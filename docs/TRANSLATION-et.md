@@ -32,11 +32,11 @@ English and Estonian, and `locales_config.xml` lists both for per-app selection.
 | Reset | Lähtesta / lähtestamine | Physical reset, distinct from restart. |
 | Restart | Taaskäivitu / taaskäivitumine | Does not imply removing saved settings. |
 | Wi-Fi off | Wi-Fi väljas | State label; action is “Lülita Wi-Fi välja”. |
-| Wi-Fi on with password | Parooliga Wi-Fi | Short choice label; confirmation explicitly says “sisse”. |
+| Wi-Fi on with password | Wi-Fi sees, parooliga | Owner wording, 2026-10-20. The confirmation still says “sisse”. |
 | Wi-Fi name | Wi-Fi nimi | Avoids SSID in the main interface. |
 | Password | Parool | Consistent in form, result, instructions and store text. |
 | Show / hide password | Näita parooli / Peida parool | Explicit actions, no ambiguous toggle label. |
-| Use the same Wi-Fi as last time | Kasuta eelmist Wi-Fi võrku | Short label for reusing the saved name and password. |
+| Use the same Wi-Fi as last time | Kasuta sama Wi-Fi-d mis eelmine kord | Owner wording, 2026-10-20. Reuses the saved name and password. |
 | Connect | Ühenda | Physical connection or the illustrated Android action. |
 | Join STARLINK | Liitu STARLINKiga | Keeps the network name and adds the normal Estonian case ending. |
 | Join on this phone | Liitu selles telefonis | The action happens on this phone; it does not join the phone. |
@@ -66,8 +66,6 @@ Branding remains **Mini Wi-Fi Switch** in both the UI and store title.
   unfamiliar to first-time users. The guide explains both the physical action and
   the loss of the saved Wi-Fi name/password. Alternative: **Taasta tehaseseaded**,
   which is longer.
-- **Parooliga Wi-Fi** keeps the main choice compact. It drops the literal “on”
-  there; the confirmation and action use **Lülita Wi-Fi sisse** explicitly.
 - **Võrguadapter**, **kaablipesa** and **internetipesa** avoid Ethernet/port jargon.
   Confirm these match how the intended field users describe their equipment.
 - **Inglise tähed** follows the final English input rules. It means letters without
@@ -81,7 +79,9 @@ Branding remains **Mini Wi-Fi Switch** in both the UI and store title.
 
 The supplied reviewer corrections were applied in fix cycle 1, including
 phone-local joining, explicit completed-step labels, cable direction and consistent
-wording. The shortened Ready choice explanations remain unchanged. The owner
+wording. The owner decided on 2026-10-20: the secure choice is **Wi-Fi sees, parooliga**
+with **Sinu enda Wi-Fi nimi ja parool.**, and the saved-profile button is
+**Kasuta sama Wi-Fi-d mis eelmine kord**. The owner
 wording questions above remain available for review.
 
 ## Screenshot coverage

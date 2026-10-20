@@ -143,15 +143,15 @@ Home retains its three-minute restart deadline, including across stop/start;
 NotFound ends Home polling and offers Check again. Eligible Reset help continues
 polling every 3 seconds even after NotFound, until navigation or backgrounding.
 Its waiting text stays at the top without recreating the scrollable column when
-observations change. Reset help has only Back, which preserves its origin.
+observations change. When automatic checking has stopped, Reset help shows the reason and Check again. Back preserves its origin.
 Guide step changes start at the top, including Back and alternate paths.
 Home keeps restart waiting prominent without a Start here reset action while polling.
 The Start here pages remain offline and do not start network work.
 
 SetupPending Home says **Ready to set up** and explains that the Mini was reset.
 Its two large choices explain cable-only use or a Wi-Fi name/password; Details is
-a small secondary action. Start here, Reset help, Check again and the read-only
-footer are absent in this state.
+a small secondary action. Start here, Reset help and the read-only
+footer are absent in this state. Check again appears when automatic checking has stopped.
 
 All illustrations are project-drawn bundled vectors, animated as separate vector
 layers. The reset press holds for three seconds; the illustrative light sequence
