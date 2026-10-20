@@ -1,0 +1,1 @@
+Lihtsam algus: pärast lähtestamist näitab rakendus „Seadistamiseks valmis“ ja kahte selget valikut ning märkab ise, kui lähtestamine on lõppenud. Rakendus on nüüd saadaval eesti keeles. Selgemad teated ja nupp „Kontrolli uuesti“, kui kontrollimine peatub. Parandatud on teated pärast ekraanilt lahkumist. Rakendust pole veel päris Miniga proovitud. Teata probleemidest GitHubis.
