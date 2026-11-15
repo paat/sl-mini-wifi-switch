@@ -36,7 +36,6 @@ Android app (Kotlin, Compose) that finishes setup of a freshly factory-reset Sta
 
 ## Workflow
 
-- Public repo: CI uses GitHub-hosted runners (`ubuntu-latest`); that is correct here, do not register a self-hosted runner.
 - Done for a change means: `./gradlew build test` passes on a clean checkout, new behaviour has unit tests, new screens meet UX.md and include light and dark phone screenshots in the PR, and docs are updated (ROADMAP.md tick, FINDINGS.md, PROTOCOL.md as relevant).
 - Anything needing a hardware test is listed in the PR description with the exact steps from TESTING.md.
 - Update [docs/FINDINGS.md](docs/FINDINGS.md) whenever a human hardware test confirms or disproves something, with date, firmware versions and the exact result.
