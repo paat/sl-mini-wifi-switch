@@ -2,6 +2,20 @@
 
 Android app (Kotlin, Compose) that finishes setup of a freshly factory-reset Starlink Mini in either bypass (Wi-Fi off) or secure Wi-Fi (name and password), over the Mini's open setup Wi-Fi or Ethernet, plus a read-only status screen. Users are non-technical people in the field, so the app must be foolproof and guide every physical step with illustrations. [docs/UX.md](docs/UX.md) is binding: a screen that doesn't meet it isn't done.
 
+## Code ownership
+AI agents own this codebase: they write, review, merge and maintain it under this repo's gates and
+invariants, and there is no human developer who will catch what you miss. The owner sets product direction
+and judges results, not code. Ownership covers code, tests, CI and docs; it adds no authority over data,
+production, secrets or spend.
+- You answer for the whole codebase, including what earlier agents wrote. A defect you find is yours to
+  handle: fix the root cause when it causes or blocks your task, otherwise record it where this repo tracks
+  work. "Pre-existing" or "not my change" is never a reason to walk past it.
+- Security and customer-data findings never go into a public issue, PR or commit: flag them to the
+  owner privately.
+- A TODO or "needs human review" note finishes nothing: complete the work, or record the blocker and its
+  unblock condition.
+- Report to the owner in product terms (what works, what does not), not in code.
+
 ## Commands
 
 - Build and test: `./gradlew build test :app:verifyRoborazziDebug` (what CI runs).
